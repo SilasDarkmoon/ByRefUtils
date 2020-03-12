@@ -1,5 +1,9 @@
 # ByRefUtils
 C# (.NET Core / Standard 2.0) utilities for variable references ( ref T val )
+
+!!! New version pushed, but the readme is not updated yet.
+！！！上传了新版本，但是本文档还未更新
+
 ## What's this project for
 
 In C# 7 we got new feature: ref local and ref return.
