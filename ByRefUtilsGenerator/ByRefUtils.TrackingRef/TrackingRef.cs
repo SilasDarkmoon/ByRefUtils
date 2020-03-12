@@ -353,11 +353,11 @@ namespace Capstones.ByRefUtils
                 var slotAddress = baseAddress;
                 if (GetStackDir() > 0)
                 {
-                    slotAddress -= (slot + 1) * IntPtr.Size;
+                    slotAddress -= (slot) * IntPtr.Size;
                 }
                 else
                 {
-                    slotAddress += (slot + 1) * IntPtr.Size;
+                    slotAddress += (slot) * IntPtr.Size;
                 }
                 while (true)
                 {
@@ -385,11 +385,11 @@ namespace Capstones.ByRefUtils
                 var slotAddress = baseAddress;
                 if (GetStackDir() > 0)
                 {
-                    slotAddress -= (slot + 1) * IntPtr.Size;
+                    slotAddress -= (slot) * IntPtr.Size;
                 }
                 else
                 {
-                    slotAddress += (slot + 1) * IntPtr.Size;
+                    slotAddress += (slot) * IntPtr.Size;
                 }
                 while (true)
                 {

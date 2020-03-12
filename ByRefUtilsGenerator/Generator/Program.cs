@@ -207,108 +207,110 @@ namespace Generator
             //    return;
             //}
 
-            var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.dll");
-            var type = asm.MainModule.GetType("Capstones.ByRefUtils.Ref");
-            TypeDefinition reftype = asm.MainModule.GetType("Capstones.ByRefUtils.RawRef");
-            var field = reftype.GetField("_Ref");
-
             {
-                var method = reftype.GetMethod("GetRef");
-                method.Body.Instructions.Clear();
+                var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.dll");
+                var type = asm.MainModule.GetType("Capstones.ByRefUtils.Ref");
+                TypeDefinition reftype = asm.MainModule.GetType("Capstones.ByRefUtils.RawRef");
+                var field = reftype.GetField("_Ref");
 
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldfld, field);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = reftype.GetMethod("SetRef");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldarg_1);
-                emitter.Emit(OpCodes.Stfld, field);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = reftype.GetMethod("GetRefObj");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldfld, field);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = reftype.GetMethod("SetRefObj");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldarg_1);
-                emitter.Emit(OpCodes.Stfld, field);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = type.GetMethod("RefEquals");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldarg_1);
-                emitter.Emit(OpCodes.Ceq);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = type.GetMethod("GetEmptyRef");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldnull);
-                emitter.Emit(OpCodes.Ret);
-            }
-            {
-                var method = type.GetMethod("IsEmpty");
-                method.Body.Instructions.Clear();
-
-                var emitter = method.Body.GetILProcessor();
-                emitter.Emit(OpCodes.Ldarg_0);
-                emitter.Emit(OpCodes.Ldnull);
-                emitter.Emit(OpCodes.Ceq);
-                emitter.Emit(OpCodes.Ret);
-            }
-
-            asm.Write(tar);
-            asm.Dispose();
-
-
-            List<string> lines = new List<string>(System.IO.File.ReadAllLines("../../../../ByRefUtils.TrackingRef/TrackingRef.ThreadWork.cs"));
-            for (int i = 0; i < lines.Count; ++i)
-            {
-                if (lines[i].TrimStart().StartsWith("#region ref slots"))
                 {
-                    var istart = i;
-                    for (i = i + 1; i < lines.Count; ++i)
+                    var method = reftype.GetMethod("GetRef");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldfld, field);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = reftype.GetMethod("SetRef");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldarg_1);
+                    emitter.Emit(OpCodes.Stfld, field);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = reftype.GetMethod("GetRefObj");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldfld, field);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = reftype.GetMethod("SetRefObj");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldarg_1);
+                    emitter.Emit(OpCodes.Stfld, field);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = type.GetMethod("RefEquals");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldarg_1);
+                    emitter.Emit(OpCodes.Ceq);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = type.GetMethod("GetEmptyRef");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldnull);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    var method = type.GetMethod("IsEmpty");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ldnull);
+                    emitter.Emit(OpCodes.Ceq);
+                    emitter.Emit(OpCodes.Ret);
+                }
+
+                asm.Write(tar);
+                asm.Dispose();
+            }
+
+            {
+                var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.TrackingRef.dll");
+                var type = asm.MainModule.GetType("Capstones.ByRefUtils.TrackingRefManager");
+
+                {
+                    var method = type.GetMethod("MakeMoreSlot");
+                    for (int i = 0; i < 1024; ++i)
                     {
-                        if (lines[i].TrimStart().StartsWith("#endregion"))
+                        var v = new VariableDefinition(new ByReferenceType(asm.MainModule.TypeSystem.Int32));
+                        method.Body.Variables.Add(v);
+                    }
+                    for (int i = 0; i < method.Body.Instructions.Count; ++i)
+                    {
+                        var ins = method.Body.Instructions[i];
+                        if (ins.OpCode.Code == Code.Call && ins.Operand is MethodReference && ((MethodReference)ins.Operand).Name == "SetRef")
                         {
-                            var iend = i;
-                            for (int j = 1023; j >= 0; --j)
-                            {
-                                lines.Insert(iend, $"            ref int r{j} = ref Ref.GetEmptyRef<int>();");
-                            }
+                            var previns = method.Body.Instructions[i - 1];
+                            previns.OpCode = OpCodes.Ldloca;
+                            previns.Operand = method.Body.Variables[method.Body.Variables.Count - 1];
                             break;
                         }
-                        else
-                        {
-                            lines.RemoveAt(i--);
-                        }
                     }
-                    break;
                 }
+
+                asm.Write(root + "/ByRefUtils.TrackingRef.dll");
+                asm.Dispose();
             }
-            System.IO.File.WriteAllLines("../../../../ByRefUtils.TrackingRef/TrackingRef.ThreadWork.cs", lines);
         }
     }
 }

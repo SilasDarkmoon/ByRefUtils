@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ByRefUtils.TrackingRef\ByRefUtils.TrackingRef.csproj" />
     <ProjectReference Include="..\ByRefUtils\ByRefUtils.csproj" />
   </ItemGroup>
 
