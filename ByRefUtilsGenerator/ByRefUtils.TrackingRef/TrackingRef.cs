@@ -135,6 +135,14 @@ namespace Capstones.ByRefUtils
             }
             return ref Ref.GetEmptyRef<T>();
         }
+        public void SetValue<T>(T val)
+        {
+            GetRef<T>() = val;
+        }
+        public T GetValue<T>()
+        {
+            return GetRef<T>();
+        }
 
         public IntPtr Address
         {

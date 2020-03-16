@@ -24,7 +24,9 @@ namespace TestByRefUtils
             ref byte b = ref Buffer5[0];
             TrackingRef<byte> r = new TrackingRef<byte>();
             r.SetRef(ref b);
+            r.Value = 127;
             Console.WriteLine(r.Address.ToString("X"));
+            Console.WriteLine(r.Value);
 
             System.Threading.Thread.Sleep(2000);
             Buffer1 = null;
@@ -43,6 +45,7 @@ namespace TestByRefUtils
             System.Threading.Thread.Sleep(2000);
 
             Console.WriteLine(r.Address.ToString("X"));
+            Console.WriteLine(r.Value);
             r.Dispose();
             RawTrackingRef.Close();
         }
