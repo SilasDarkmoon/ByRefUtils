@@ -311,7 +311,7 @@ namespace Capstones.ByRefUtils
             while (true)
             {
                 var fcnt = FilledLevelCount;
-                if (fcnt > Levels.Length)
+                if (fcnt >= Levels.Length)
                 {
                     break;
                 }
