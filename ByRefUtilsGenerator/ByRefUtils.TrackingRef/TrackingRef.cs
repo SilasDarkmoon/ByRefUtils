@@ -154,12 +154,66 @@ namespace Capstones.ByRefUtils
                 return rr.Address;
             }
         }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public class TrackingRef : IDisposable, IRef
+    {
+        private RawTrackingRef _Ref;
+        public TrackingRef()
+        {
+            _Ref = RawTrackingRef.Create();
+        }
+
+        #region IDisposable Support
+        private bool _Disposed = false; // 要检测冗余调用
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_Disposed)
+            {
+                _Disposed = true;
+                _Ref.Dispose();
+            }
+        }
+        ~TrackingRef()
+        {
+            // 请勿更改此代码。将清理代码放入以上 Dispose(bool disposing) 中。
+            Dispose(false);
+        }
+        // 添加此代码以正确实现可处置模式。
+        public void Dispose()
+        {
+            // 请勿更改此代码。将清理代码放入以上 Dispose(bool disposing) 中。
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
+
+        public IntPtr Address { get { return _Ref.Address; } }
+
+        public void SetRef<T>(ref T r)
+        {
+            _Ref.SetRef(ref r);
+        }
+        public ref T GetRef<T>()
+        {
+            return ref _Ref.GetRef<T>();
+        }
+        public void SetValue<T>(T val)
+        {
+            _Ref.SetValue<T>(val);
+        }
+        public T GetValue<T>()
+        {
+            return _Ref.GetValue<T>();
+        }
 
         public static void Close()
         {
             TrackingRefManager.GlobalManager.Dispose();
         }
     }
+
 
     [StructLayout(LayoutKind.Sequential)]
     public class TrackingRef<T> : IDisposable, IRef
@@ -207,8 +261,8 @@ namespace Capstones.ByRefUtils
 
         public T Value
         {
-            get { return GetRef(); }
-            set { GetRef() = value; }
+            get { return _Ref.GetValue<T>(); }
+            set { _Ref.SetValue<T>(value); }
         }
     }
 
