@@ -47,7 +47,7 @@ namespace TestByRefUtils
             Console.WriteLine(r.Address.ToString("X"));
             Console.WriteLine(r.Value);
             r.Dispose();
-            TrackingRef.Close();
+            //TrackingRef.Close();
         }
     }
 }

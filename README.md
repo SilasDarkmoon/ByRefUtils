@@ -103,7 +103,6 @@ Because objects on gc heap will be moved by garbage collector, so if you need a 
 1) Import and reference the ByRefUtils.TrackingRef.dll
 2) Use ```Capstones.ByRefUtils.RawTrackingRef``` (struct) or ```Capstones.ByRefUtils.TrackingRef``` (class) or ```Capstones.ByRefUtils.TrackingRef<T>``` (class). You can use them just like RawRef/Ref.
 3) Donot forget to Dispose TrackingRef.
-4) If you're developing an Console App, you should use ```Capstones.ByRefUtils.TrackingRef.Close()``` before your app exits.
 
 ### About the trick to implement TrackingRef
 After gc moved the object, gc will auto change any ref on execution stack to the correct address. So we can make a new thread and make ref locals on this thread's execution stack. We use RawRef to get the address of locals on thread's stack and read real address from it.
@@ -215,7 +214,6 @@ RawRef 是值类型(struct). 也可以使用 ```Capstones.ByRefUtils.Ref``` (引
 1) 导入并引用 ByRefUtils.TrackingRef.dll
 2) 使用 ```Capstones.ByRefUtils.RawTrackingRef``` (struct) 或 ```Capstones.ByRefUtils.TrackingRef``` (class) 或 ```Capstones.ByRefUtils.TrackingRef<T>``` (class) 代替 ```RawRef``` / ```Ref``` / ```Ref<T>```
 3) 使用TrackingRef / RawTrackingRef后一定要记得 Dispose()！！
-4) TrackingRef的内部实现使用了一个阻塞的线程，可能会导致某些程序无法退出。通常是控制台程序。在这种情况下，应当在程序退出前（不再需要使用TrackingRef之后）调用```Capstones.ByRefUtils.TrackingRef.Close()```
 
 ### 实现原理
 当gc移动了堆上object之后，它会检查调用栈上是否有ref引用到这个object的字段，并自动将这些ref引用的地址更正为新的值。在TrackingRef中新建了一个线程来维护一个调用栈，这个线程的栈上基本全是ref局部变量。然后通过RawRef来获取线程栈上局部变量的地址（ref局部变量的地址，相当于指针的指针），然后从中读取一个IntPtr，就是真正的地址了。

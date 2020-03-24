@@ -286,6 +286,7 @@ namespace Capstones.ByRefUtils
         public TrackingRefManager()
         {
             _Thread = new Thread(ThreadWork);
+            _Thread.IsBackground = true;
             _Thread.Start(new TrackingRefManagerThreadWorkInput() { Ops = _StackOps, WaitHandle = _WaitForStackOp });
         }
 
