@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Capstones.ByRefUtils
+namespace Mod.LowLevel
 {
     public interface IRef
     {

@@ -209,8 +209,8 @@ namespace Generator
 
             {
                 var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.dll");
-                var type = asm.MainModule.GetType("Capstones.ByRefUtils.Ref");
-                TypeDefinition reftype = asm.MainModule.GetType("Capstones.ByRefUtils.RawRef");
+                var type = asm.MainModule.GetType("Mod.LowLevel.Ref");
+                TypeDefinition reftype = asm.MainModule.GetType("Mod.LowLevel.RawRef");
                 var field = reftype.GetField("_Ref");
 
                 {
@@ -239,6 +239,7 @@ namespace Generator
                     var emitter = method.Body.GetILProcessor();
                     emitter.Emit(OpCodes.Ldarg_0);
                     emitter.Emit(OpCodes.Ldfld, field);
+                    emitter.Emit(OpCodes.Conv_U);
                     emitter.Emit(OpCodes.Ret);
                 }
                 {
@@ -248,6 +249,7 @@ namespace Generator
                     var emitter = method.Body.GetILProcessor();
                     emitter.Emit(OpCodes.Ldarg_0);
                     emitter.Emit(OpCodes.Ldarg_1);
+                    emitter.Emit(OpCodes.Conv_I);
                     emitter.Emit(OpCodes.Stfld, field);
                     emitter.Emit(OpCodes.Ret);
                 }
@@ -286,7 +288,7 @@ namespace Generator
 
             {
                 var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.TrackingRef.dll");
-                var type = asm.MainModule.GetType("Capstones.ByRefUtils.TrackingRefManager");
+                var type = asm.MainModule.GetType("Mod.LowLevel.TrackingRefManager");
 
                 {
                     var method = type.GetMethod("MakeMoreSlot");

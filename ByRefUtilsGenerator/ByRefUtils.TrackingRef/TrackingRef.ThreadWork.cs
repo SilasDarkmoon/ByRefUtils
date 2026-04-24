@@ -1,6 +1,6 @@
 using System;
 
-namespace Capstones.ByRefUtils
+namespace Mod.LowLevel
 {
     internal partial class TrackingRefManager
     {

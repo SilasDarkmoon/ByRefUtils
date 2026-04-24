@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Capstones.ByRefUtils
+namespace Mod.LowLevel
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct RawTrackingRef : IDisposable, IRef
