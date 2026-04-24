@@ -211,6 +211,7 @@ namespace Generator
                 var asm = AssemblyDefinition.ReadAssembly("ByRefUtils.dll");
                 var type = asm.MainModule.GetType("Mod.LowLevel.Ref");
                 TypeDefinition reftype = asm.MainModule.GetType("Mod.LowLevel.RawRef");
+                TypeReference objtype = asm.MainModule.TypeSystem.Object;
                 var field = reftype.GetField("_Ref");
 
                 {
@@ -238,8 +239,9 @@ namespace Generator
 
                     var emitter = method.Body.GetILProcessor();
                     emitter.Emit(OpCodes.Ldarg_0);
-                    emitter.Emit(OpCodes.Ldfld, field);
-                    emitter.Emit(OpCodes.Conv_U);
+                    emitter.Emit(OpCodes.Ldflda, field);
+                    emitter.Emit(OpCodes.Ldind_Ref);
+                    emitter.Emit(OpCodes.Castclass, objtype);
                     emitter.Emit(OpCodes.Ret);
                 }
                 {
