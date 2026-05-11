@@ -5,6 +5,10 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
+	<PropertyGroup>
+		<ServerGarbageCollection>true</ServerGarbageCollection>
+	</PropertyGroup>
+
   <ItemGroup>
     <Reference Include="ByRefUtils">
       <HintPath>..\..\ByRefUtils.dll</HintPath>
