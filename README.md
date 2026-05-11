@@ -43,14 +43,14 @@ So I created the ByRefUtils.dll to help us to do these.
 1) Declare a ref to a variable
 ```C#
         int i = 0;
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         r.SetRef(ref i);
 ```
-RawRef is a struct. You can also use ```Capstones.ByRefUtils.Ref``` (class) or ```Capstones.ByRefUtils.Ref<T>``` (class)
+RawRef is a struct. You can also use ```Mod.LowLevel.Ref``` (class) or ```Mod.LowLevel.Ref<T>``` (class)
 
 2) Get ref from RawRef / Ref / Ref<T>
 ```C#
-        Capstones.ByRefUtils.RawRef r;
+        Mod.LowLevel.RawRef r;
         //...
         ref int ri = ref r.GetRef<int>();
 ```
@@ -58,33 +58,33 @@ RawRef is a struct. You can also use ```Capstones.ByRefUtils.Ref``` (class) or `
 3) Get / Set Value
 ```C#
         int i = 0;
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         r.SetRef(ref i);
         r.SetValue(2);
 ```
 
 4) Get empty (null) ref
 ```C#
-        Capstones.ByRefUtils.Ref.GetEmptyRef<T>()
+        Mod.LowLevel.Ref.GetEmptyRef<T>()
         // or new RawRef / Ref / Ref<T> and GetRef from them
 ```
 
 4) Check ref equals
 ```C#
-        Capstones.ByRefUtils.Ref.RefEquals<T>(ref T a, ref T b)
+        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref T b)
 ```
 
 5) Check a ref is empty (null)
 ```C#
         // check ref equals to GetEmptyRef
-        Capstones.ByRefUtils.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
+        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
         // or
-        Capstones.ByRefUtils.Ref.IsEmpty<T>(ref T r)
+        Mod.LowLevel.Ref.IsEmpty<T>(ref T r)
 ```
 
 6) We can do dangerous convert use it
 ```C#
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         int i = 1;
         r.SetRef(ref i);
         var plat = r.GetRef<RuntimePlatform>(); // RuntimePlatform is an enum
@@ -101,7 +101,7 @@ Because objects on gc heap will be moved by garbage collector, so if you need a 
 
 ### How to use
 1) Import and reference the ByRefUtils.TrackingRef.dll
-2) Use ```Capstones.ByRefUtils.RawTrackingRef``` (struct) or ```Capstones.ByRefUtils.TrackingRef``` (class) or ```Capstones.ByRefUtils.TrackingRef<T>``` (class). You can use them just like RawRef/Ref.
+2) Use ```Mod.LowLevel.RawTrackingRef``` (struct) or ```Mod.LowLevel.TrackingRef``` (class) or ```Mod.LowLevel.TrackingRef<T>``` (class). You can use them just like RawRef/Ref.
 3) Donot forget to Dispose TrackingRef.
 
 ### About the trick to implement TrackingRef
@@ -167,21 +167,21 @@ public static ref int Find(IList<int> list, int val)
 
 1) 下载并拷贝 ByRefUtils.dll 到目标工程。
 2) 在目标工程中添加 ByRefUtils.dll 的引用。
-3) 使用 ByRefUtils.dll 中的类型。（集中在 Capstones.ByRefUtils 命名空间中）
+3) 使用 ByRefUtils.dll 中的类型。（集中在 Mod.LowLevel 命名空间中）
 
 ## 代码示例
 
 1) 声明一个变量的引用
 ```C#
         int i = 0;
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         r.SetRef(ref i);
 ```
-RawRef 是值类型(struct). 也可以使用 ```Capstones.ByRefUtils.Ref``` (引用类型class) or ```Capstones.ByRefUtils.Ref<T>``` (泛型引用类型)
+RawRef 是值类型(struct). 也可以使用 ```Mod.LowLevel.Ref``` (引用类型class) or ```Mod.LowLevel.Ref<T>``` (泛型引用类型)
 
 2) 从 RawRef / Ref / Ref<T> 里拿引用
 ```C#
-        Capstones.ByRefUtils.RawRef r;
+        Mod.LowLevel.RawRef r;
         //...
         ref int ri = ref r.GetRef<int>();
 ```
@@ -189,33 +189,33 @@ RawRef 是值类型(struct). 也可以使用 ```Capstones.ByRefUtils.Ref``` (引
 3) 取值/赋值
 ```C#
         int i = 0;
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         r.SetRef(ref i);
         r.SetValue(2);
 ```
 
 4) 拿一个空引用
 ```C#
-        Capstones.ByRefUtils.Ref.GetEmptyRef<T>()
+        Mod.LowLevel.Ref.GetEmptyRef<T>()
         // 也可以 new RawRef / Ref / Ref<T> 然后直接调用 GetRef
 ```
 
 4) 检查引用的地址是否相等
 ```C#
-        Capstones.ByRefUtils.Ref.RefEquals<T>(ref T a, ref T b)
+        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref T b)
 ```
 
 5) 检查一个引用是否为空
 ```C#
         // 与 GetEmptyRef 进行引用比等
-        Capstones.ByRefUtils.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
+        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
         // 或者调用这个函数
-        Capstones.ByRefUtils.Ref.IsEmpty<T>(ref T r)
+        Mod.LowLevel.Ref.IsEmpty<T>(ref T r)
 ```
 
 6) 最后我们可以使用它来进行快速（也危险）的类型转换
 ```C#
-        var r = new Capstones.ByRefUtils.RawRef();
+        var r = new Mod.LowLevel.RawRef();
         int i = 1;
         r.SetRef(ref i);
         var plat = r.GetRef<RuntimePlatform>(); // RuntimePlatform 是一个枚举
@@ -232,7 +232,7 @@ RawRef 是值类型(struct). 也可以使用 ```Capstones.ByRefUtils.Ref``` (引
 
 ### 怎样使用
 1) 导入并引用 ByRefUtils.TrackingRef.dll
-2) 使用 ```Capstones.ByRefUtils.RawTrackingRef``` (struct) 或 ```Capstones.ByRefUtils.TrackingRef``` (class) 或 ```Capstones.ByRefUtils.TrackingRef<T>``` (class) 代替 ```RawRef``` / ```Ref``` / ```Ref<T>```
+2) 使用 ```Mod.LowLevel.RawTrackingRef``` (struct) 或 ```Mod.LowLevel.TrackingRef``` (class) 或 ```Mod.LowLevel.TrackingRef<T>``` (class) 代替 ```RawRef``` / ```Ref``` / ```Ref<T>```
 3) 使用TrackingRef / RawTrackingRef后一定要记得 Dispose()！！
 
 ### 实现原理
