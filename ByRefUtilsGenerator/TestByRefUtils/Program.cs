@@ -69,8 +69,22 @@ namespace TestByRefUtils
             TrackingRef<byte> tr = new TrackingRef<byte>();
             tr.SetRef(ref r);
 
-            Console.WriteLine("Performance test - ref keyword:");
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            sw.Stop();
+
+            // Because of cache, the first run may be slow. Ignore first run.
+            sw.Restart();
+            //Console.WriteLine("Performance test - ref keyword:");
+            for (int i = 0; i < count; i++)
+            {
+                int b = r;
+                r = (byte)(b + 1);
+            }
+            sw.Stop();
+            //Console.WriteLine($"ref keyword: {sw.ElapsedMilliseconds} ms");
+            
+            Console.WriteLine("Performance test - ref keyword:");
+            sw.Restart();
             for (int i = 0; i < count; i++)
             {
                 int b = r;
