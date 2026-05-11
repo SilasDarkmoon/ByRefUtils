@@ -111,6 +111,24 @@ After gc moved the object, gc will auto change any ref on execution stack to the
 1) Compile and Run Generator project (in Release mode) to generate ByRefUtils.dll and ByRefUtils.TrackingRef.dll
 2) Compile and Run TestByRefUtils project to make a test.
 
+## Performance
+The TestByRefUtils project contains a simple test. The result is likely this:
+Performance test - ref keyword:
+ref keyword: 0 ms
+Performance test - RawRef:
+RawRef: 0 ms
+Performance test - LocalRef:
+LocalRef: 0 ms
+Performance test - TrackingRef:
+TrackingRef: 0 ms
+Performance test - create ref keyword:
+ref keyword: 1 ms
+Performance test - create RawRef:
+RawRef: 2 ms
+Performance test - create TrackingRef:
+TrackingRef: 341 ms
+So, it almost cost no overhead when accessing through RawRef or TrackingRef. But creating and Disposing TrackingRef is a bit expensive.
+
 # 中文说明
 ## 这个工程是做什么的？
 
@@ -221,3 +239,21 @@ RawRef 是值类型(struct). 也可以使用 ```Capstones.ByRefUtils.Ref``` (引
 ## Visual Studio工程
 1) 编译并运行 Generator 工程 (最好是 Release) 来生成 ByRefUtils.dll 与 ByRefUtils.TrackingRef.dll
 2) 然后编译并执行 TestByRefUtils 工程来进行一下测试
+
+## 性能
+TestByRefUtils工程包含一个简单的测试。测试结果大致如下：
+Performance test - ref keyword:
+ref keyword: 0 ms
+Performance test - RawRef:
+RawRef: 0 ms
+Performance test - LocalRef:
+LocalRef: 0 ms
+Performance test - TrackingRef:
+TrackingRef: 0 ms
+Performance test - create ref keyword:
+ref keyword: 1 ms
+Performance test - create RawRef:
+RawRef: 2 ms
+Performance test - create TrackingRef:
+TrackingRef: 341 ms
+因此，可以认为通过RawRef或者TrackingRef进行数据访问是没有额外开销的。但是要注意，建立和销毁TrackingRef是一个比较耗时的操作。
