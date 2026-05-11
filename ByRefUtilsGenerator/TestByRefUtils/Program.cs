@@ -22,11 +22,14 @@ namespace TestByRefUtils
             Buffer5 = new byte[1024];
 
             ref byte b = ref Buffer5[0];
+            LocalRef lr = new LocalRef(0);
             TrackingRef<byte> r = new TrackingRef<byte>();
             r.SetRef(ref b);
             r.Value = 127;
             Console.WriteLine(r.Address.ToString("X"));
             Console.WriteLine(r.Value);
+            Console.WriteLine(lr.Address.ToString("X"));
+            Console.WriteLine(lr.GetRef<byte>());
 
             System.Threading.Thread.Sleep(2000);
             Buffer1 = null;
@@ -46,8 +49,99 @@ namespace TestByRefUtils
 
             Console.WriteLine(r.Address.ToString("X"));
             Console.WriteLine(r.Value);
+            Console.WriteLine(lr.Address.ToString("X"));
+            Console.WriteLine(lr.GetRef<byte>());
             r.Dispose();
+
+            PerfTest();
+
             //TrackingRef.Close();
+        }
+
+        static void PerfTest()
+        {
+            const int count = 1000000;
+            byte[] buffer = new byte[1024];
+            ref byte r = ref buffer[244];
+            LocalRef lr = new LocalRef(0);
+            RawRef rb = new RawRef();
+            rb.SetRef(ref r);
+            TrackingRef<byte> tr = new TrackingRef<byte>();
+            tr.SetRef(ref r);
+
+            Console.WriteLine("Performance test - ref keyword:");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < count; i++)
+            {
+                int b = r;
+                r = (byte)(b + 1);
+            }
+            sw.Stop();
+            Console.WriteLine($"ref keyword: {sw.ElapsedMilliseconds} ms");
+
+            Console.WriteLine("Performance test - RawRef:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                int b = rb.GetValue<byte>();
+                rb.SetValue((byte)(b + 1));
+            }
+            sw.Stop();
+            Console.WriteLine($"RawRef: {sw.ElapsedMilliseconds} ms");
+
+            Console.WriteLine("Performance test - LocalRef:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                int b = lr.GetRef<byte>();
+                lr.GetRef<byte>() = ((byte)(b + 1));
+            }
+            sw.Stop();
+            Console.WriteLine($"LocalRef: {sw.ElapsedMilliseconds} ms");
+
+            Console.WriteLine("Performance test - TrackingRef:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                int b = tr.Value;
+                tr.Value = ((byte)(b + 1));
+            }
+            sw.Stop();
+            Console.WriteLine($"TrackingRef: {sw.ElapsedMilliseconds} ms");
+            tr.Dispose();
+
+            Console.WriteLine("Performance test - create ref keyword:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                r = ref buffer[i % buffer.Length];
+                r = (byte)i;
+            }
+            sw.Stop();
+            Console.WriteLine($"ref keyword: {sw.ElapsedMilliseconds} ms");
+
+            Console.WriteLine("Performance test - create RawRef:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                rb = new RawRef();
+                rb.SetRef(ref buffer[i % buffer.Length]);
+                rb.SetValue((byte)i);
+            }
+            sw.Stop();
+            Console.WriteLine($"RawRef: {sw.ElapsedMilliseconds} ms");
+
+            Console.WriteLine("Performance test - create TrackingRef:");
+            sw.Restart();
+            for (int i = 0; i < count; i++)
+            {
+                tr = new TrackingRef<byte>();
+                tr.SetRef(ref buffer[i % buffer.Length]);
+                tr.Value = ((byte)i);
+                tr.Dispose();
+            }
+            sw.Stop();
+            Console.WriteLine($"TrackingRef: {sw.ElapsedMilliseconds} ms");
         }
     }
 }

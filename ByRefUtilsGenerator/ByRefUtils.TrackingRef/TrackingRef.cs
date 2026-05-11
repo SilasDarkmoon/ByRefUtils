@@ -7,24 +7,25 @@ using System.Threading;
 namespace Mod.LowLevel
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct RawTrackingRef : IDisposable, IRef
+    public struct RawTrackingRef : IDisposable, IIndirectRef
     {
-        private int _Data;
+        private RawRef _Ref2Ref;
+        private int _SlotData;
         public bool IsValid
         {
             get
             {
-                return (_Data & 0x100000) != 0;
+                return (_SlotData & 0x100000) != 0;
             }
             private set
             {
                 if (value)
                 {
-                    _Data |= 0x100000;
+                    _SlotData |= 0x100000;
                 }
                 else
                 {
-                    _Data &= ~0x100000;
+                    _SlotData &= ~0x100000;
                 }
             }
         }
@@ -32,26 +33,27 @@ namespace Mod.LowLevel
         {
             get
             {
-                return (_Data & 0xFFC00) >> 10;
+                return (_SlotData & 0xFFC00) >> 10;
             }
             private set
             {
-                _Data &= ~0xFFC00;
-                _Data |= (value << 10) & 0xFFC00;
+                _SlotData &= ~0xFFC00;
+                _SlotData |= (value << 10) & 0xFFC00;
             }
         }
         public int Slot
         {
             get
             {
-                return _Data & 0x3FF;
+                return _SlotData & 0x3FF;
             }
             private set
             {
-                _Data &= ~0x3FF;
-                _Data |= value & 0x3FF;
+                _SlotData &= ~0x3FF;
+                _SlotData |= value & 0x3FF;
             }
         }
+        public RawRef Ref2Ref => _Ref2Ref;
 
         public void Dispose()
         {
@@ -88,6 +90,7 @@ namespace Mod.LowLevel
                     raw.Level = lman.Index;
                     raw.Slot = slot;
                     raw.IsValid = true;
+                    raw._Ref2Ref = TrackingRefManager.GlobalManager.GetSlotRef(raw.Level, raw.Slot);
                     return raw;
                 }
             }
@@ -100,6 +103,7 @@ namespace Mod.LowLevel
                 raw.Level = level;
                 raw.Slot = slot;
                 raw.IsValid = true;
+                raw._Ref2Ref = TrackingRefManager.GlobalManager.GetSlotRef(raw.Level, raw.Slot);
                 return raw;
             }
 
@@ -122,18 +126,31 @@ namespace Mod.LowLevel
 
         public void SetRef<T>(ref T r)
         {
-            if (IsValid)
-            {
-                TrackingRefManager.GlobalManager.SetRef(Level, Slot, ref r);
-            }
+            //if (IsValid)
+            //{
+            //    TrackingRefManager.GlobalManager.SetRef(Level, Slot, ref r);
+            //}
+            ref RawRef rd = ref _Ref2Ref.GetRef<RawRef>();
+            rd.SetRef<T>(ref r);
         }
         public ref T GetRef<T>()
         {
-            if (IsValid)
+            //if (IsValid)
+            //{
+            //    return ref TrackingRefManager.GlobalManager.GetRef<T>(Level, Slot);
+            //}
+            //return ref Ref.GetEmptyRef<T>();
+            ref RawRef r = ref _Ref2Ref.GetRef<RawRef>();
+            for (; ; )
             {
-                return ref TrackingRefManager.GlobalManager.GetRef<T>(Level, Slot);
+                var oldAddr = r.Address;
+                ref T rv = ref r.GetRef<T>();
+                var newAddr = r.Address;
+                if (oldAddr == newAddr)
+                {
+                    return ref rv;
+                }
             }
-            return ref Ref.GetEmptyRef<T>();
         }
         public void SetValue<T>(T val)
         {
@@ -148,18 +165,178 @@ namespace Mod.LowLevel
         {
             get
             {
-                ref int r = ref GetRef<int>();
-                RawRef rr = new RawRef();
-                rr.SetRef(ref r);
-                return rr.Address;
+                //ref int r = ref GetRef<int>();
+                //RawRef rr = new RawRef();
+                //rr.SetRef(ref r);
+                //return rr.Address;
+                var r = _Ref2Ref.GetValue<IntPtr>();
+                return r;
             }
+        }
+
+        // I decide not to implement convert operator to the indirect ref.
+
+        public override bool Equals(object obj)
+        {
+            if (obj is IIndirectRef r)
+            {
+                return _Ref2Ref == r.Ref2Ref;
+            }
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return _Ref2Ref.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return _Ref2Ref.Address.ToString("X") + " -> " + Address.ToString("X");
+        }
+
+        public static bool operator ==(RawTrackingRef r1, RawTrackingRef r2)
+        {
+            return r1._Ref2Ref == r2._Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef r1, RawTrackingRef r2)
+        {
+            return r1._Ref2Ref != r2._Ref2Ref;
+        }
+        public static bool operator ==(RawTrackingRef r1, IIndirectRef r2)
+        {
+            return r1._Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef r1, IIndirectRef r2)
+        {
+            return r1._Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(IIndirectRef r1, RawTrackingRef r2)
+        {
+            return r1.Ref2Ref == r2._Ref2Ref;
+        }
+        public static bool operator !=(IIndirectRef r1, RawTrackingRef r2)
+        {
+            return r1.Ref2Ref != r2._Ref2Ref;
         }
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public class TrackingRef : IDisposable, IRef
+    public struct RawTrackingRef<T> : IDisposable, IIndirectRef<T>
+    {
+        private RawTrackingRef _BaseRef;
+        public RawRef Ref2Ref => _BaseRef.Ref2Ref;
+
+        public void Dispose()
+        {
+            _BaseRef.Dispose();
+        }
+        public static RawTrackingRef<T> Create()
+        {
+            RawTrackingRef<T> raw = new RawTrackingRef<T>();
+            raw._BaseRef = RawTrackingRef.Create();
+            return raw;
+        }
+        public void SetRef(ref T r)
+        {
+            _BaseRef.SetRef<T>(ref r);
+        }
+        public ref T GetRef()
+        {
+            return ref _BaseRef.GetRef<T>();
+        }
+        public void SetValue(T val)
+        {
+            _BaseRef.SetValue<T>(val);
+        }
+        public T GetValue()
+        {
+            return _BaseRef.GetValue<T>();
+        }
+        public IntPtr Address
+        {
+            get
+            {
+                var r = _BaseRef.Address;
+                return r;
+            }
+        }
+
+        public ref T R
+        {
+            get => ref GetRef();
+        }
+        public T Value
+        {
+            get { return GetValue(); }
+            set { SetValue(value); }
+        }
+
+        // I decide not to implement convert operator to the indirect ref.
+
+        public override bool Equals(object obj)
+        {
+            if (obj is IIndirectRef r)
+            {
+                return Ref2Ref == r.Ref2Ref;
+            }
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return Ref2Ref.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return Ref2Ref.Address.ToString("X") + " -> " + Address.ToString("X");
+        }
+
+        public static bool operator ==(RawTrackingRef<T> r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef<T> r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(RawTrackingRef<T> r1, RawTrackingRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef<T> r1, RawTrackingRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(RawTrackingRef r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(RawTrackingRef<T> r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(RawTrackingRef<T> r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(IIndirectRef r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(IIndirectRef r1, RawTrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public class TrackingRef : IDisposable, IIndirectRef
     {
         private RawTrackingRef _Ref;
+        public RawRef Ref2Ref => _Ref.Ref2Ref;
+
         public TrackingRef()
         {
             _Ref = RawTrackingRef.Create();
@@ -212,13 +389,58 @@ namespace Mod.LowLevel
         {
             TrackingRefManager.GlobalManager.Dispose();
         }
+
+        // I decide not to implement convert operator to the indirect ref.
+
+        public override bool Equals(object obj)
+        {
+            if (obj is IIndirectRef r)
+            {
+                return Ref2Ref == r.Ref2Ref;
+            }
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return Ref2Ref.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return Ref2Ref.Address.ToString("X") + " -> " + Address.ToString("X");
+        }
+
+        public static bool operator ==(TrackingRef r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(TrackingRef r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(IIndirectRef r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(IIndirectRef r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
     }
 
 
     [StructLayout(LayoutKind.Sequential)]
-    public class TrackingRef<T> : IDisposable, IRef
+    public class TrackingRef<T> : IDisposable, IIndirectRef<T>
     {
         private RawTrackingRef _Ref;
+        public RawRef Ref2Ref => _Ref.Ref2Ref;
         public TrackingRef()
         {
             _Ref = RawTrackingRef.Create();
@@ -258,11 +480,83 @@ namespace Mod.LowLevel
         {
             return ref _Ref.GetRef<T>();
         }
+        public void SetValue(T val)
+        {
+            GetRef() = val;
+        }
+        public T GetValue()
+        {
+            return GetRef();
+        }
 
+        public ref T R
+        {
+            get => ref GetRef();
+        }
         public T Value
         {
             get { return _Ref.GetValue<T>(); }
             set { _Ref.SetValue<T>(value); }
+        }
+
+        // I decide not to implement convert operator to the indirect ref.
+
+        public override bool Equals(object obj)
+        {
+            if (obj is IIndirectRef r)
+            {
+                return Ref2Ref == r.Ref2Ref;
+            }
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return Ref2Ref.GetHashCode();
+        }
+        public override string ToString()
+        {
+            return Ref2Ref.Address.ToString("X") + " -> " + Address.ToString("X");
+        }
+
+        public static bool operator ==(TrackingRef<T> r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef<T> r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(TrackingRef<T> r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef<T> r1, TrackingRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(TrackingRef r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(TrackingRef<T> r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(TrackingRef<T> r1, IIndirectRef r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
+        }
+        public static bool operator ==(IIndirectRef r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref == r2.Ref2Ref;
+        }
+        public static bool operator !=(IIndirectRef r1, TrackingRef<T> r2)
+        {
+            return r1.Ref2Ref != r2.Ref2Ref;
         }
     }
 
@@ -471,6 +765,27 @@ namespace Mod.LowLevel
                 }
             }
             return ref Ref.GetEmptyRef<T>();
+        }
+
+        public RawRef GetSlotRef(int level, int slot)
+        {
+            var baseAddress = Levels[level].BaseAddress;
+            if (baseAddress != IntPtr.Zero)
+            {
+                var slotAddress = baseAddress;
+                if (GetStackDir() > 0)
+                {
+                    slotAddress -= (slot) * IntPtr.Size;
+                }
+                else
+                {
+                    slotAddress += (slot) * IntPtr.Size;
+                }
+                RawRef dest = new RawRef();
+                dest.Address = slotAddress;
+                return dest;
+            }
+            return new RawRef();
         }
 
         #region IDisposable Support
