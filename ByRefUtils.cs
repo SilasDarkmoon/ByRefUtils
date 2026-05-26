@@ -37,6 +37,20 @@ namespace Mod.LowLevel
             get { return _Ref; }
             set { _Ref = value; }
         }
+
+        public static RawRef Of(object obj)
+        {
+            RawRef rr = new RawRef();
+            rr.SetRefObj(obj);
+            return rr;
+        }
+        public static RawRef Of<T>(ref T r)
+        {
+            RawRef rr = new RawRef();
+            rr.SetRef(ref r);
+            return rr;
+        }
+
         public static implicit operator IntPtr(RawRef r)
         {
             return r._Ref;
@@ -148,6 +162,12 @@ namespace Mod.LowLevel
     [StructLayout(LayoutKind.Sequential)]
     public struct RawRef<T> : IRef<T>
     {
+        public RawRef(ref T r)
+        {
+            _BaseRef = new RawRef();
+            _BaseRef.SetRef<T>(ref r);
+        }
+
         private RawRef _BaseRef;
         public void SetRef(ref T r)
         {
@@ -284,6 +304,20 @@ namespace Mod.LowLevel
             get { return _Ref.Address; }
             set { _Ref.Address = value; }
         }
+
+        public static Ref Of(object obj)
+        {
+            Ref rr = new Ref();
+            rr.SetRefObj(obj);
+            return rr;
+        }
+        public static Ref Of<T>(ref T r)
+        {
+            Ref rr = new Ref();
+            rr.SetRef(ref r);
+            return rr;
+        }
+
         public static implicit operator IntPtr(Ref r)
         {
             return r._Ref;
@@ -407,6 +441,12 @@ namespace Mod.LowLevel
     [StructLayout(LayoutKind.Sequential)]
     public sealed class Ref<T> : IRef<T>
     {
+        public Ref() { }
+        public Ref(ref T r)
+        {
+            _Ref.SetRef<T>(ref r);
+        }
+
         private RawRef _Ref = new RawRef();
         /// <summary>
         /// You should be very careful in setting the address.

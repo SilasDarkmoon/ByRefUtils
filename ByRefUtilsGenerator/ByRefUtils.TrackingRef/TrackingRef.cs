@@ -7,7 +7,7 @@ using System.Threading;
 namespace Mod.LowLevel
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct RawTrackingRef : IDisposable, IIndirectRef
+    public struct RawTrackingRef : IDisposable, IUntypedIndirectRef
     {
         private RawRef _Ref2Ref;
         private int _SlotData;
@@ -332,7 +332,7 @@ namespace Mod.LowLevel
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public class TrackingRef : IDisposable, IIndirectRef
+    public class TrackingRef : IDisposable, IUntypedIndirectRef
     {
         private RawTrackingRef _Ref;
         public RawRef Ref2Ref => _Ref.Ref2Ref;

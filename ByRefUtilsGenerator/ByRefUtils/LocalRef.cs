@@ -9,13 +9,16 @@ namespace Mod.LowLevel
     {
         RawRef Ref2Ref { get; }
     }
+    public interface IUntypedIndirectRef : IIndirectRef, IUntypedRef
+    {
+    }
     public interface IIndirectRef<T> : IIndirectRef, IRef<T>
     {
     }
 
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct LocalRef : IIndirectRef
+    public struct LocalRef : IUntypedIndirectRef
     {
         private RawRef _Ref2Ref;
         public RawRef Ref2Ref => _Ref2Ref;
