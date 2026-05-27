@@ -40,54 +40,69 @@ So I created the ByRefUtils.dll to help us to do these.
 
 ## What can it do
 
-1) Declare a ref to a variable
+1) ```using Mod.LowLevel;```
+
+2) Declare a ref to a variable
 ```C#
         int i = 0;
-        var r = new Mod.LowLevel.RawRef();
+        var r = new RawRef();
         r.SetRef(ref i);
+        // Or
+        var r2 = RawRef.Of(ref i);
 ```
 RawRef is a struct. You can also use ```Mod.LowLevel.Ref``` (class) or ```Mod.LowLevel.Ref<T>``` (class)
 
-2) Get ref from RawRef / Ref / Ref<T>
+3) Get ref from ```RawRef / Ref / Ref<T>```
 ```C#
-        Mod.LowLevel.RawRef r;
+        RawRef r;
         //...
         ref int ri = ref r.GetRef<int>();
 ```
 
-3) Get / Set Value
+4) Get / Set Value
 ```C#
         int i = 0;
-        var r = new Mod.LowLevel.RawRef();
-        r.SetRef(ref i);
+        var r = RawRef.Of(ref i);
         r.SetValue(2);
 ```
 
-4) Get empty (null) ref
+5) Get empty (null) ref
 ```C#
-        Mod.LowLevel.Ref.GetEmptyRef<T>()
+        Ref.GetEmptyRef<T>()
         // or new RawRef / Ref / Ref<T> and GetRef from them
 ```
 
-4) Check ref equals
+6) Check ref equals
 ```C#
-        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref T b)
+        Ref.RefEquals<T>(ref T a, ref T b)
 ```
 
-5) Check a ref is empty (null)
+7) Check a ref is empty (null)
 ```C#
         // check ref equals to GetEmptyRef
-        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
+        Ref.RefEquals<T>(ref T a, ref Ref.GetEmptyRef<T>())
         // or
-        Mod.LowLevel.Ref.IsEmpty<T>(ref T r)
+        Ref.IsEmpty<T>(ref T r)
 ```
 
-6) We can do dangerous convert use it
+8) We can do dangerous convert use it
 ```C#
-        var r = new Mod.LowLevel.RawRef();
         int i = 1;
-        r.SetRef(ref i);
+        var r = RawRef.Of(ref i);
         var plat = r.GetRef<RuntimePlatform>(); // RuntimePlatform is an enum
+```
+
+9) Takes an object as a ref!
+```C#
+        object o = new object();
+        var r = RawRef.Of(o);
+        var address = r.Address;
+```
+
+10) Get writable ref from a readonly ref.
+```C#
+        int i = 1;
+        ref int r = Ref.Unprotect(in i);
 ```
 
 ## Remarks
@@ -106,6 +121,9 @@ Because objects on gc heap will be moved by garbage collector, so if you need a 
 
 ### About the trick to implement TrackingRef
 After gc moved the object, gc will auto change any ref on execution stack to the correct address. So we can make a new thread and make ref locals on this thread's execution stack. We use RawRef to get the address of locals on thread's stack and read real address from it.
+
+### LocalRef - Light weight TrackingRef
+Creating TrackingRef is expensive. We can point to a ref variable on running evaluation stack using LocalRef. It can track object moving and do not need Dispose. It is useful to pass a unpinned ref to native child method, when the native method donot really read from the address. (Mostly, the native method will callback to C# to reflect call a managed method)
 
 ## The Visual Studio Solution
 1) Compile and Run Generator project (in Release mode) to generate ByRefUtils.dll and ByRefUtils.TrackingRef.dll
@@ -171,54 +189,69 @@ public static ref int Find(IList<int> list, int val)
 
 ## 代码示例
 
-1) 声明一个变量的引用
+1) ```using Mod.LowLevel;```
+
+2) 声明一个变量的引用
 ```C#
         int i = 0;
-        var r = new Mod.LowLevel.RawRef();
+        var r = new RawRef();
         r.SetRef(ref i);
+        // Or
+        var r2 = RawRef.Of(ref i);
 ```
 RawRef 是值类型(struct). 也可以使用 ```Mod.LowLevel.Ref``` (引用类型class) or ```Mod.LowLevel.Ref<T>``` (泛型引用类型)
 
-2) 从 RawRef / Ref / Ref<T> 里拿引用
+3) 从 ```RawRef / Ref / Ref<T>``` 里拿引用
 ```C#
-        Mod.LowLevel.RawRef r;
+        RawRef r;
         //...
         ref int ri = ref r.GetRef<int>();
 ```
 
-3) 取值/赋值
+4) 取值/赋值
 ```C#
         int i = 0;
-        var r = new Mod.LowLevel.RawRef();
-        r.SetRef(ref i);
+        var r = RawRef.Of(ref i);
         r.SetValue(2);
 ```
 
-4) 拿一个空引用
+5) 拿一个空引用
 ```C#
-        Mod.LowLevel.Ref.GetEmptyRef<T>()
+        Ref.GetEmptyRef<T>()
         // 也可以 new RawRef / Ref / Ref<T> 然后直接调用 GetRef
 ```
 
-4) 检查引用的地址是否相等
+6) 检查引用的地址是否相等
 ```C#
-        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref T b)
+        Ref.RefEquals<T>(ref T a, ref T b)
 ```
 
-5) 检查一个引用是否为空
+7) 检查一个引用是否为空
 ```C#
         // 与 GetEmptyRef 进行引用比等
-        Mod.LowLevel.Ref.RefEquals<T>(ref T a, ref GetEmptyRef<T>())
+        Ref.RefEquals<T>(ref T a, ref Ref.GetEmptyRef<T>())
         // 或者调用这个函数
-        Mod.LowLevel.Ref.IsEmpty<T>(ref T r)
+        Ref.IsEmpty<T>(ref T r)
 ```
 
-6) 最后我们可以使用它来进行快速（也危险）的类型转换
+8) 我们可以使用它来进行快速（也危险）的类型转换
 ```C#
-        var r = new Mod.LowLevel.RawRef();
         int i = 1;
-        r.SetRef(ref i);
+        var r = RawRef.Of(ref i);
         var plat = r.GetRef<RuntimePlatform>(); // RuntimePlatform 是一个枚举
+```
+
+9) 将一个对象转换为指向它堆上位置的引用
+```C#
+        object o = new object();
+        var r = RawRef.Of(o);
+        var address = r.Address;
+```
+
+10) 将一个只读引用(in)，转换为普通引用
+```C#
+        int i = 1;
+        ref int r = Ref.Unprotect(in i);
 ```
 
 ## 说明
@@ -237,6 +270,9 @@ RawRef 是值类型(struct). 也可以使用 ```Mod.LowLevel.Ref``` (引用类�
 
 ### 实现原理
 当gc移动了堆上object之后，它会检查调用栈上是否有ref引用到这个object的字段，并自动将这些ref引用的地址更正为新的值。在TrackingRef中新建了一个线程来维护一个调用栈，这个线程的栈上基本全是ref局部变量。然后通过RawRef来获取线程栈上局部变量的地址（ref局部变量的地址，相当于指针的指针），然后从中读取一个IntPtr，就是真正的地址了。
+
+### LocalRef - TrackingRef的轻量替代
+创建TrackingRef是较费时的，只适用与想长期持有这个引用的情况。我们可以拿到一个执行栈上局部ref变量的地址做简介引用，这就是LocalRef。它也能追踪GC对对象的移动，而且不需要Dispose这个LocalRef。常用于调用一个本地方法，这个本地方法会通过反射的方式回调一个托管方法，并且要传递一个ref作为方法参数，这个本地方法并不是直接去读引用地址，也不需要固定这个对象，只是作为一个中间层，透传一个ref变量而已。
 
 ## Visual Studio工程
 1) 编译并运行 Generator 工程 (最好是 Release) 来生成 ByRefUtils.dll 与 ByRefUtils.TrackingRef.dll

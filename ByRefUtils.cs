@@ -426,7 +426,7 @@ namespace Mod.LowLevel
 
         public static bool RefEquals<T>(ref T a, ref T b)
         {
-            return false;
+            throw new NotImplementedException();
         }
         public static ref T GetEmptyRef<T>()
         {
@@ -435,6 +435,10 @@ namespace Mod.LowLevel
         public static bool IsEmpty<T>(ref T r)
         {
             return RefEquals(ref r, ref GetEmptyRef<T>());
+        }
+        public static ref T Unprotect<T>(in T rreadonly)
+        {
+            throw new NotImplementedException();
         }
     }
 
