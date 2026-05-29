@@ -20,6 +20,16 @@ namespace Mod.LowLevel
     [StructLayout(LayoutKind.Sequential)]
     public struct LocalRef : IUntypedIndirectRef
     {
+        private static int GetStackDir()
+        {
+            RawRef r1 = new RawRef();
+            r1.SetRef(ref r1);
+            RawRef r2 = new RawRef();
+            r2.SetRef(ref r2);
+            return (int)(((long)r2.Address) - ((long)r1.Address));
+        }
+        public static readonly int StackDir = GetStackDir();
+
         private RawRef _Ref2Ref;
         public RawRef Ref2Ref => _Ref2Ref;
 
@@ -40,7 +50,7 @@ namespace Mod.LowLevel
         public void SetSlotRef<T>(ref T r)
         {
             _Ref2Ref.SetRef<T>(ref r);
-            _Ref2Ref.Address -= IntPtr.Size;
+            _Ref2Ref.Address -= StackDir;
         }
 
         public LocalRef(int offset)
@@ -49,7 +59,7 @@ namespace Mod.LowLevel
             _Ref2Ref.SetRef(ref this);
             if (offset == 0)
             {
-                _Ref2Ref.Address -= IntPtr.Size;
+                _Ref2Ref.Address -= StackDir;
             }
             else
             {

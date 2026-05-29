@@ -30,6 +30,10 @@ namespace TestByRefUtils
             Console.WriteLine(r.Value);
             Console.WriteLine(lr.Address.ToString("X"));
             Console.WriteLine(lr.GetRef<byte>());
+            object fake = null;
+            RawRef.Of(ref fake).GetRef<RawRef>().SetRef(ref b);
+            Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
+            Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
 
             System.Threading.Thread.Sleep(2000);
             Buffer1 = null;
@@ -51,6 +55,8 @@ namespace TestByRefUtils
             Console.WriteLine(r.Value);
             Console.WriteLine(lr.Address.ToString("X"));
             Console.WriteLine(lr.GetRef<byte>());
+            Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
+            Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
             r.Dispose();
 
             PerfTest();

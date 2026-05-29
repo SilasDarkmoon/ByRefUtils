@@ -630,15 +630,6 @@ namespace Mod.LowLevel
             _WaitForStackOp.Set();
         }
 
-        public static int GetStackDir()
-        {
-            RawRef r1 = new RawRef();
-            r1.SetRef(ref r1);
-            RawRef r2 = new RawRef();
-            r2.SetRef(ref r2);
-            return (int)(((long)r2.Address) - ((long)r1.Address));
-        }
-
         public static readonly TrackingRefManager GlobalManager = new TrackingRefManager();
         
         internal struct LevelInfo
@@ -708,7 +699,7 @@ namespace Mod.LowLevel
             if (baseAddress != IntPtr.Zero)
             {
                 var slotAddress = baseAddress;
-                if (GetStackDir() > 0)
+                if (LocalRef.StackDir > 0)
                 {
                     slotAddress -= (slot) * IntPtr.Size;
                 }
@@ -740,7 +731,7 @@ namespace Mod.LowLevel
             if (baseAddress != IntPtr.Zero)
             {
                 var slotAddress = baseAddress;
-                if (GetStackDir() > 0)
+                if (LocalRef.StackDir > 0)
                 {
                     slotAddress -= (slot) * IntPtr.Size;
                 }
@@ -773,7 +764,7 @@ namespace Mod.LowLevel
             if (baseAddress != IntPtr.Zero)
             {
                 var slotAddress = baseAddress;
-                if (GetStackDir() > 0)
+                if (LocalRef.StackDir > 0)
                 {
                     slotAddress -= (slot) * IntPtr.Size;
                 }
