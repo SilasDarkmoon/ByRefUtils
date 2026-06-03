@@ -50,6 +50,12 @@ namespace Mod.LowLevel
             rr.SetRef(ref r);
             return rr;
         }
+        public static RawRef Of(IntPtr address)
+        {
+            RawRef rr = new RawRef();
+            rr.Address = address;
+            return rr;
+        }
 
         public static implicit operator IntPtr(RawRef r)
         {
@@ -166,6 +172,10 @@ namespace Mod.LowLevel
         {
             _BaseRef = new RawRef();
             _BaseRef.SetRef<T>(ref r);
+        }
+        public RawRef(IntPtr address)
+        {
+            _BaseRef = new RawRef() { Address = address };
         }
 
         private RawRef _BaseRef;
@@ -317,6 +327,12 @@ namespace Mod.LowLevel
             rr.SetRef(ref r);
             return rr;
         }
+        public static Ref Of(IntPtr address)
+        {
+            Ref rr = new Ref();
+            rr.Address = address;
+            return rr;
+        }
 
         public static implicit operator IntPtr(Ref r)
         {
@@ -449,6 +465,10 @@ namespace Mod.LowLevel
         public Ref(ref T r)
         {
             _Ref.SetRef<T>(ref r);
+        }
+        public Ref(IntPtr address)
+        {
+            _Ref.Address = address;
         }
 
         private RawRef _Ref = new RawRef();
