@@ -291,6 +291,14 @@ namespace Generator
                     emitter.Emit(OpCodes.Ldarg_0);
                     emitter.Emit(OpCodes.Ret);
                 }
+                {
+                    var method = type.GetMethod("IgnoreOut");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ret);
+                }
 
                 asm.Write(tar);
                 asm.Dispose();

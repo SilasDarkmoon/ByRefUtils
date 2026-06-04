@@ -456,6 +456,10 @@ namespace Mod.LowLevel
         {
             throw new NotImplementedException();
         }
+        public static ref T IgnoreOut<T>(out T rreadonly)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
