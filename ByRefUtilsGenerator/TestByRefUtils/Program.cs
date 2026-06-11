@@ -3,6 +3,11 @@ using System;
 
 namespace TestByRefUtils
 {
+    public struct RefContainer
+    {
+        private object _InnerRef;
+    }
+
     class Program
     {
         static byte[] Buffer0;
@@ -21,7 +26,7 @@ namespace TestByRefUtils
             Buffer4 = new byte[1024];
             Buffer5 = new byte[1024];
 
-            ref byte b = ref Buffer5[0];
+            ref byte b = ref Buffer5[111];
             LocalRef lr = new LocalRef(0);
             TrackingRef<byte> r = new TrackingRef<byte>();
             r.SetRef(ref b);
@@ -34,6 +39,10 @@ namespace TestByRefUtils
             RawRef.Of(ref fake).GetRef<RawRef>().SetRef(ref b);
             Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
             Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
+            RefContainer container = default;
+            RawRef.Of(ref container).GetRef<RawRef>().SetRef(ref b);
+            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
+            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
 
             System.Threading.Thread.Sleep(2000);
             Buffer1 = null;
@@ -57,6 +66,8 @@ namespace TestByRefUtils
             Console.WriteLine(lr.GetRef<byte>());
             Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
             Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
+            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
+            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
             r.Dispose();
 
             PerfTest();
