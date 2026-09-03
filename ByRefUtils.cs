@@ -300,6 +300,24 @@ namespace Mod.LowLevel
         {
             return r1.Address != r2.Address;
         }
+#pragma warning disable CS8500 // 这会获取托管类型的地址、获取其大小或声明指向它的指针
+        public static RawRef<T> operator +(RawRef<T> r, int cnt)
+        {
+            unsafe
+            {
+                r.Address += cnt * sizeof(T);
+            }
+            return r;
+        }
+        public static RawRef<T> operator -(RawRef<T> r, int cnt)
+        {
+            unsafe
+            {
+                r.Address -= cnt * sizeof(T);
+            }
+            return r;
+        }
+#pragma warning restore CS8500 // 这会获取托管类型的地址、获取其大小或声明指向它的指针
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -39,6 +39,7 @@ namespace TestByRefUtils
             Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
             Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
 
+            Console.WriteLine("Waiting for GC...");
             System.Threading.Thread.Sleep(2000);
             Buffer1 = null;
             Buffer2 = null;
