@@ -3,11 +3,6 @@ using System;
 
 namespace TestByRefUtils
 {
-    public struct RefContainer
-    {
-        private object _InnerRef;
-    }
-
     class Program
     {
         static byte[] Buffer0;
