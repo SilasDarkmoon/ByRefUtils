@@ -1,9 +1,11 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Mod.LowLevel
 {
     internal partial class TrackingRefManager
     {
+        [MethodImpl(MethodImplOptions.NoOptimization)]
         protected static void MakeMoreSlot(TrackingRefManagerThreadWorkInput input, Action<IntPtr> onComplete)
         {
             RawRef r = new RawRef();
