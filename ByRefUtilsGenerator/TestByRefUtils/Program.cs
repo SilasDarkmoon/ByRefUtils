@@ -1,5 +1,6 @@
 ﻿using Mod.LowLevel;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace TestByRefUtils
 {
@@ -12,6 +13,7 @@ namespace TestByRefUtils
         static byte[] Buffer4;
         static byte[] Buffer5;
 
+        [MethodImpl(MethodImplOptions.NoOptimization)]
         static void Main(string[] args)
         {
             Buffer0 = new byte[1024];
@@ -22,22 +24,23 @@ namespace TestByRefUtils
             Buffer5 = new byte[1024];
 
             ref byte b = ref Buffer5[111];
+            b = 120;
             LocalRef lr = new LocalRef(0);
-            TrackingRef<byte> r = new TrackingRef<byte>();
+            RawTrackingRef<byte> r = RawTrackingRef<byte>.Create();
             r.SetRef(ref b);
             r.Value = 127;
             Console.WriteLine(r.Address.ToString("X"));
             Console.WriteLine(r.Value);
             Console.WriteLine(lr.Address.ToString("X"));
             Console.WriteLine(lr.GetRef<byte>());
-            object fake = null;
-            RawRef.Of(ref fake).GetRef<RawRef>().SetRef(ref b);
-            Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
-            Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
-            RefContainer container = default;
-            RawRef.Of(ref container).GetRef<RawRef>().SetRef(ref b);
-            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
-            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
+            //object fake = null;
+            //RawRef.Of(ref fake).GetRef<RawRef>().SetRef(ref b);
+            //Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
+            //Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
+            //RefContainer container = default;
+            //RawRef.Of(ref container).GetRef<RawRef>().SetRef(ref b);
+            //Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
+            //Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
 
             Console.WriteLine("Waiting for GC...");
             System.Threading.Thread.Sleep(2000);
@@ -45,26 +48,35 @@ namespace TestByRefUtils
             Buffer2 = null;
             Buffer3 = null;
             Buffer4 = null;
-            System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-            System.GC.Collect(2, GCCollectionMode.Forced, true, true);
-            System.GC.WaitForFullGCComplete();
-            System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-            System.GC.Collect(2, GCCollectionMode.Forced, true, true);
-            System.GC.WaitForFullGCComplete();
-            System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-            System.GC.Collect(2, GCCollectionMode.Forced, true, true);
-            System.GC.WaitForFullGCComplete();
+
+            var keep = new byte[64][];
+            for (int i = 0; i < 50_000_000; i++)
+                keep[i & 63] = new byte[128];
+            GC.KeepAlive(keep);
+
+            //System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            //System.GC.Collect(2, GCCollectionMode.Forced, true, true);
+            //System.GC.WaitForFullGCComplete();
+            //System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            //System.GC.Collect(2, GCCollectionMode.Forced, true, true);
+            //System.GC.WaitForFullGCComplete();
+            //System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            //System.GC.Collect(2, GCCollectionMode.Forced, true, true);
+            //System.GC.WaitForFullGCComplete();
             System.Threading.Thread.Sleep(2000);
 
             Console.WriteLine(r.Address.ToString("X"));
             Console.WriteLine(r.Value);
             Console.WriteLine(lr.Address.ToString("X"));
             Console.WriteLine(lr.GetRef<byte>());
-            Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
-            Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
-            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
-            Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
+            //Console.WriteLine(RawRef.Of(fake).Address.ToString("X"));
+            //Console.WriteLine(RawRef.Of(fake).GetRef<byte>());
+            //Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().Address.ToString("X"));
+            //Console.WriteLine(RawRef.Of(ref container).GetRef<RawRef>().GetRef<byte>());
             r.Dispose();
+            Console.WriteLine(b);
+            //fake = null;
+            //container = default;
 
             PerfTest();
 
@@ -79,7 +91,7 @@ namespace TestByRefUtils
             LocalRef lr = new LocalRef(0);
             RawRef rb = new RawRef();
             rb.SetRef(ref r);
-            TrackingRef<byte> tr = new TrackingRef<byte>();
+            RawTrackingRef<byte> tr = RawTrackingRef<byte>.Create();
             tr.SetRef(ref r);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -158,11 +170,12 @@ namespace TestByRefUtils
             sw.Stop();
             Console.WriteLine($"RawRef: {sw.ElapsedMilliseconds} ms");
 
-            Console.WriteLine("Performance test - create TrackingRef:");
+            tr.Dispose();
+            Console.WriteLine("Performance test - create RawTrackingRef:");
             sw.Restart();
             for (int i = 0; i < count; i++)
             {
-                tr = new TrackingRef<byte>();
+                tr = RawTrackingRef<byte>.Create();
                 tr.SetRef(ref buffer[i % buffer.Length]);
                 tr.Value = ((byte)i);
                 tr.Dispose();
