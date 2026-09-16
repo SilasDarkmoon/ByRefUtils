@@ -116,6 +116,10 @@ namespace Mod.LowLevel
                 var r = _Ref2Ref.GetValue<IntPtr>();
                 return r;
             }
+            set
+            {
+                _Ref2Ref.SetValue(value);
+            }
         }
 
         // I decide not to implement convert operator to the indirect ref.
@@ -127,6 +131,14 @@ namespace Mod.LowLevel
                 return _Ref2Ref == r.Ref2Ref;
             }
             return false;
+        }
+        public bool Equals(RawTrackingRef other)
+        {
+            return _Ref2Ref == other.Ref2Ref;
+        }
+        public bool Equals<T>(T other) where T : struct, IIndirectRef
+        {
+            return _Ref2Ref == other.Ref2Ref;
         }
         public override int GetHashCode()
         {
@@ -202,6 +214,10 @@ namespace Mod.LowLevel
                 var r = _BaseRef.Address;
                 return r;
             }
+            set
+            {
+                _BaseRef.Address = value;
+            }
         }
 
         public ref T R
@@ -223,6 +239,18 @@ namespace Mod.LowLevel
                 return Ref2Ref == r.Ref2Ref;
             }
             return false;
+        }
+        public bool Equals(RawTrackingRef<T> other)
+        {
+            return Ref2Ref == other.Ref2Ref;
+        }
+        public bool Equals(RawTrackingRef other)
+        {
+            return Ref2Ref == other.Ref2Ref;
+        }
+        public bool Equals<O>(O other) where O : struct, IIndirectRef
+        {
+            return Ref2Ref == other.Ref2Ref;
         }
         public override int GetHashCode()
         {
@@ -310,7 +338,11 @@ namespace Mod.LowLevel
         }
         #endregion
 
-        public IntPtr Address { get { return _Ref.Address; } }
+        public IntPtr Address
+        {
+            get { return _Ref.Address; }
+            set { _Ref.Address = value; }
+        }
 
         public void SetRef<T>(ref T r)
         {
@@ -414,7 +446,11 @@ namespace Mod.LowLevel
         }
         #endregion
 
-        public IntPtr Address { get { return _Ref.Address; } }
+        public IntPtr Address
+        {
+            get { return _Ref.Address; }
+            set { _Ref.Address = value; }
+        }
         
         public void SetRef(ref T r)
         {

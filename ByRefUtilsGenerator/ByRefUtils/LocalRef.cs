@@ -66,6 +66,10 @@ namespace Mod.LowLevel
                 _Ref2Ref.Address += offset;
             }
         }
+        public LocalRef(IntPtr slotaddr)
+        {
+            _Ref2Ref = new RawRef() { Address = slotaddr };
+        }
 
         public void SetRef<T>(ref T r)
         {
