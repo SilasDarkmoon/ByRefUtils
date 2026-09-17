@@ -10,9 +10,9 @@ namespace Mod.LowLevel
     {
         public enum RefType
         {
-            Local = 0,
             Raw = 0x01000000,
             Tracking = 0x02000000,
+            Local = 0x03000000,
         }
 
         [StructLayout(LayoutKind.Sequential)]
