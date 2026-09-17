@@ -42,7 +42,7 @@ namespace Mod.LowLevel
         public RefType Type
         {
             get => _UnionType.Type;
-            private set
+            set
             {
                 if (_UnionType.Type != value)
                 {
@@ -255,6 +255,95 @@ namespace Mod.LowLevel
             {
                 return new UnionRef(RawRef.Of(ref r));
             }
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct UnionRef<T> : IRef<T>, IDisposable
+    {
+        private UnionRef _Inner;
+
+        public ref RawRef<T> _Raw => ref RawRef.Of(ref _Inner).GetRef<RawRef<T>>();
+        public ref LocalRef<T> _Local => ref RawRef.Of(ref _Inner).GetRef<LocalRef<T>>();
+        public ref RawTrackingRef<T> _Tracking => ref RawRef.Of(ref _Inner).GetRef<RawTrackingRef<T>>();
+
+        public UnionRef.RefType Type
+        {
+            get => _Inner.Type;
+            set => _Inner.Type = value;
+        }
+        public RawRef<T> Raw
+        {
+            get => _Raw;
+            set => _Inner.Raw = RawRef.Of(ref value).GetValue<RawRef>();
+        }
+        public LocalRef<T> Local
+        {
+            get => _Local;
+            set => _Inner.Local = RawRef.Of(ref value).GetValue<LocalRef>();
+        }
+        public RawTrackingRef<T> Tracking
+        {
+            get => _Tracking;
+            set => _Inner._Tracking = RawRef.Of(ref value).GetValue<RawTrackingRef>();
+        }
+
+        public ref T GetRef()
+        {
+            return ref _Inner.GetRef<T>();
+        }
+        public void SetRef(ref T r)
+        {
+            _Inner.SetRef(ref r);
+        }
+        public T GetValue()
+        {
+            return _Inner.GetValue<T>();
+        }
+        public void SetValue(T value)
+        {
+            _Inner.SetValue(value);
+        }
+        public ref T R => ref GetRef();
+        public T Value
+        {
+            get => GetValue();
+            set => SetValue(value);
+        }
+        public IntPtr Address
+        {
+            get => _Inner.Address;
+            set => _Inner.Address = value;
+        }
+
+        public UnionRef(RawRef<T> r)
+        {
+            _Inner = new UnionRef(RawRef.Of(ref r).GetValue<RawRef>());
+        }
+        public UnionRef(LocalRef<T> r)
+        {
+            _Inner = new UnionRef(RawRef.Of(ref r).GetValue<LocalRef>());
+        }
+        public UnionRef(RawTrackingRef<T> r)
+        {
+            _Inner = new UnionRef(RawRef.Of(ref r).GetValue<RawTrackingRef>());
+        }
+        public UnionRef(UnionRef.RefType type)
+        {
+            _Inner = default;
+            _Inner.Type = type;
+        }
+        public UnionRef(ref T r) : this(UnionRef.RefType.Raw)
+        {
+            SetRef(ref r);
+        }
+        public UnionRef(UnionRef.RefType type, ref T r) : this(type)
+        {
+            SetRef(ref r);
+        }
+        public void Dispose()
+        {
+            _Inner.Dispose();
         }
     }
 }
