@@ -40,6 +40,10 @@ namespace Mod.LowLevel
                 var r = _Ref2Ref.GetValue<IntPtr>();
                 return r;
             }
+            set
+            {
+                _Ref2Ref.SetValue(value);
+            }
         }
 
         public void SetSlotRef<T>(ref T r, int offset)

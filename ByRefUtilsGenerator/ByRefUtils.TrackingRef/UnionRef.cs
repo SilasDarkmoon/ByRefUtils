@@ -46,9 +46,10 @@ namespace Mod.LowLevel
             {
                 if (_UnionType.Type != value)
                 {
+                    ref byte addr = ref GetRef<byte>();
                     if (_UnionType.Type == RefType.Tracking)
                     {
-                        Tracking.Dispose();
+                        _Tracking.Dispose();
                     }
                     switch (value)
                     {
@@ -63,6 +64,7 @@ namespace Mod.LowLevel
                             Tracking = RawTrackingRef.Create();
                             break;
                     }
+                    SetRef(ref addr);
                 }
             }
         }
@@ -73,7 +75,7 @@ namespace Mod.LowLevel
             {
                 if (_UnionType.Type == RefType.Tracking)
                 {
-                    Tracking.Dispose();
+                    _Tracking.Dispose();
                 }
                 _Raw = value;
                 _UnionType.Type = RefType.Raw;
@@ -86,7 +88,7 @@ namespace Mod.LowLevel
             {
                 if (_UnionType.Type == RefType.Tracking)
                 {
-                    Tracking.Dispose();
+                    _Tracking.Dispose();
                 }
                 _Local = value;
                 _UnionType.Type = RefType.Local;
@@ -103,7 +105,7 @@ namespace Mod.LowLevel
                     {
                         return;
                     }
-                    Tracking.Dispose();
+                    _Tracking.Dispose();
                 }
                 _Tracking = value;
                 _UnionType.Type = RefType.Tracking;
@@ -115,11 +117,11 @@ namespace Mod.LowLevel
             switch (Type)
             {
                 case RefType.Local:
-                    return ref Local.GetRef<T>();
+                    return ref _Local.GetRef<T>();
                 case RefType.Raw:
-                    return ref Raw.GetRef<T>();
+                    return ref _Raw.GetRef<T>();
                 case RefType.Tracking:
-                    return ref Tracking.GetRef<T>();
+                    return ref _Tracking.GetRef<T>();
                 default:
                     return ref Ref.GetEmptyRef<T>();
             }
@@ -129,13 +131,13 @@ namespace Mod.LowLevel
             switch (Type)
             {
                 case RefType.Local:
-                    Local.SetRef(ref r);
+                    _Local.SetRef(ref r);
                     break;
                 case RefType.Raw:
-                    Raw.SetRef(ref r);
+                    _Raw.SetRef(ref r);
                     break;
                 case RefType.Tracking:
-                    Tracking.SetRef(ref r);
+                    _Tracking.SetRef(ref r);
                     break;
             }
         }
@@ -144,11 +146,11 @@ namespace Mod.LowLevel
             switch (Type)
             {
                 case RefType.Local:
-                    return Local.GetValue<T>();
+                    return _Local.GetValue<T>();
                 case RefType.Raw:
-                    return Raw.GetValue<T>();
+                    return _Raw.GetValue<T>();
                 case RefType.Tracking:
-                    return Tracking.GetValue<T>();
+                    return _Tracking.GetValue<T>();
                 default:
                     return default;
             }
@@ -158,13 +160,13 @@ namespace Mod.LowLevel
             switch (Type)
             {
                 case RefType.Local:
-                    Local.SetValue(value);
+                    _Local.SetValue(value);
                     break;
                 case RefType.Raw:
-                    Raw.SetValue(value);
+                    _Raw.SetValue(value);
                     break;
                 case RefType.Tracking:
-                    Tracking.SetValue(value);
+                    _Tracking.SetValue(value);
                     break;
             }
         }
@@ -175,13 +177,28 @@ namespace Mod.LowLevel
                 switch (Type)
                 {
                     case RefType.Local:
-                        return Local.Address;
+                        return _Local.Address;
                     case RefType.Raw:
-                        return Raw.Address;
+                        return _Raw.Address;
                     case RefType.Tracking:
-                        return Tracking.Address;
+                        return _Tracking.Address;
                     default:
                         return IntPtr.Zero;
+                }
+            }
+            set
+            {
+                switch (Type)
+                {
+                    case RefType.Local:
+                        _Local.Address = value;
+                        break;
+                    case RefType.Raw:
+                        _Raw.Address = value;
+                        break;
+                    case RefType.Tracking:
+                        _Tracking.Address = value;
+                        break;
                 }
             }
         }
