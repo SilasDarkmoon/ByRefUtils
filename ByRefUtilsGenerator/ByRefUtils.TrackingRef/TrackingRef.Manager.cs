@@ -14,6 +14,25 @@ namespace Mod.LowLevel
     ///  _Bag        —— free-list storage, a 4-level array _Bag[b1][b2][b3][b4];
     ///                 the index is split into 4 bytes, b4 being the lowest one.
     ///  _Head       —— head of the free list.
+    ///  _Allocated  —— allocation bitmap, same 4-level shape as _Bag but with
+    ///                 ulong[4] leaves (256 values = 4 words x 64 bits per leaf).
+    ///                 bit=1 ⟺ the value is currently handed out. Take sets the
+    ///                 bit (Interlocked.Or; a bit already set = DOUBLE ALLOCATION),
+    ///                 Return clears it (Interlocked.And; a bit already clear =
+    ///                 DOUBLE RETURN). Both checks are O(1) and atomic (the
+    ///                 Interlocked op returns the old value), turning the old
+    ///                 "silent pool poisoning that explodes in a random later
+    ///                 test" into an immediate, located throw at the offending
+    ///                 call site.
+    ///                 Bitmap levels are allocated on demand via CAS (idempotent:
+    ///                 the loser of the CAS simply uses the winner's array) and
+    ///                 leaves are reclaimed inside the trim window together with
+    ///                 the _Bag leaves (the window blocks fresh issuing and the
+    ///                 trim precondition guarantees no live holder in the range,
+    ///                 so no concurrent bit write can race the reclaim).
+    ///                 Note: the bitmap detects same-generation double return;
+    ///                 a stale copy returning a value that has already been
+    ///                 re-issued is epoch territory (a future extension).
     ///
     /// List encoding:
     ///   _Head low 32 bits = head index+1; 0 means the list is empty
@@ -55,8 +74,116 @@ namespace Mod.LowLevel
 
         private readonly int[][][][] _Bag = new int[256][][][];
 
+        // Allocation bitmap: _Allocated[b1][b2][b3] is a long[4] leaf covering the same
+        // 256-value range as the _Bag leaf (4 words x 64 bits). bit=1 ⟺ value is taken.
+        // (long rather than ulong: netstandard2.0 has no Interlocked overloads for
+        // unsigned types — the bit patterns are identical either way.)
+        private readonly long[][][][] _Allocated = new long[256][][][];
+
         private static int NextValue(long packed) => (int)packed;
         private static long Pack(int value, int trim) => ((long)trim << 32) | (uint)value;
+
+        // ================ allocation bitmap ================
+
+        /// <summary>
+        /// Ensures the bitmap leaf covering <paramref name="index"/> exists, allocating
+        /// missing intermediate levels on demand via CAS (idempotent: a CAS loser
+        /// simply picks up the winner's array — no lock, no leak, no torn state).
+        /// </summary>
+        private long[] EnsureAllocatedLeaf(int index)
+        {
+            int b1 = (byte)(index >> 24);
+            int b2 = (byte)(index >> 16);
+            int b3 = (byte)(index >> 8);
+
+            var l3 = _Allocated[b1];
+            if (l3 == null)
+            {
+                Interlocked.CompareExchange(ref _Allocated[b1], new long[256][][], null);
+                l3 = _Allocated[b1];
+            }
+
+            var l2 = l3[b2];
+            if (l2 == null)
+            {
+                Interlocked.CompareExchange(ref l3[b2], new long[256][], null);
+                l2 = l3[b2];
+            }
+
+            var leaf = l2[b3];
+            if (leaf == null)
+            {
+                Interlocked.CompareExchange(ref l2[b3], new long[4], null);
+                leaf = l2[b3];
+            }
+            return leaf;
+        }
+
+        /// <summary>Read-only leaf lookup; null when any level is not yet allocated
+        /// (a value below _Next always has an allocated leaf unless a trim reclaimed
+        /// it — both mean "bit is clear").</summary>
+        private long[] GetAllocatedLeaf(int index)
+        {
+            var l3 = _Allocated[(byte)(index >> 24)];
+            if (l3 == null) return null;
+            var l2 = l3[(byte)(index >> 16)];
+            if (l2 == null) return null;
+            return l2[(byte)(index >> 8)];
+        }
+
+        /// <summary>
+        /// Marks <paramref name="index"/> as allocated. Returns false when the bit was
+        /// already set — the value was handed out twice (double allocation: the free
+        /// list or the fresh counter is corrupted).
+        /// </summary>
+        private bool TryMarkAllocated(int index)
+        {
+            var leaf = EnsureAllocatedLeaf(index);
+            long bit = 1L << (index & 63);
+            long old = InterlockedOr(ref leaf[(index >> 6) & 3], bit);
+            return (old & bit) == 0;
+        }
+
+        /// <summary>
+        /// Marks <paramref name="index"/> as returned. Returns false when the bit was
+        /// already clear — the value was returned twice (or was never allocated:
+        /// the range check in Return has already rejected never-allocated values,
+        /// so reaching here with a clear bit means a duplicate return).
+        /// </summary>
+        private bool TryMarkReturned(int index)
+        {
+            var leaf = GetAllocatedLeaf(index);
+            if (leaf == null) return false;
+            long bit = 1L << (index & 63);
+            long old = InterlockedAnd(ref leaf[(index >> 6) & 3], ~bit);
+            return (old & bit) != 0;
+        }
+
+        /// <summary>Atomic OR returning the old value (Interlocked.Or is .NET 9+;
+        /// this build targets netstandard2.0, so a CAS loop it is).</summary>
+        private static long InterlockedOr(ref long location, long value)
+        {
+            long comparand = Volatile.Read(ref location);
+            while (true)
+            {
+                long original = Interlocked.CompareExchange(ref location, comparand | value, comparand);
+                if (original == comparand) return original;
+                comparand = original;
+            }
+        }
+
+        /// <summary>Atomic AND returning the old value (Interlocked.And is .NET 9+;
+        /// this build targets netstandard2.0, so a CAS loop it is).</summary>
+        private static long InterlockedAnd(ref long location, long value)
+        {
+            long comparand = Volatile.Read(ref location);
+            while (true)
+            {
+                long original = Interlocked.CompareExchange(ref location, comparand & value, comparand);
+                if (original == comparand) return original;
+                comparand = original;
+            }
+        }
 
         /// <summary>
         /// Take a value: preferably from the free list (returns _BagHead-1 when _BagHead != 0);
@@ -79,7 +206,11 @@ namespace Mod.LowLevel
                 long newHead = ((head >> 32) + 1) << 32 | (uint)nextEnc;
                 if (Interlocked.CompareExchange(ref _Head, newHead, head) == head)
                 {
-                    // CAS won: clear the slot (0 = not in list) — prerequisite for
+                    // CAS won: the value is definitively ours — mark it allocated.
+                    // A bit already set means the free list handed out a value twice.
+                    if (!TryMarkAllocated(index))
+                        throw new InvalidOperationException($"IntBag: double allocation of value {index} (free list corrupted).");
+                    // Clear the slot (0 = not in list) — prerequisite for
                     // the reliability of Return's duplicate-return check.
                     SetBagValue(index, 0);
                     return index;
@@ -98,7 +229,13 @@ namespace Mod.LowLevel
                 }
                 int next = NextValue(packed);
                 if (Interlocked.CompareExchange(ref _NextPacked, Pack(next + 1, 0), packed) == packed)
+                {
+                    // CAS won: the value is definitively ours — mark it allocated.
+                    // A bit already set means the fresh counter re-issued a live value.
+                    if (!TryMarkAllocated(next))
+                        throw new InvalidOperationException($"IntBag: double allocation of value {next} (fresh counter corrupted).");
                     return next;
+                }
                 // CAS lost (concurrent issue / return) → retry.
             }
         }
@@ -113,6 +250,13 @@ namespace Mod.LowLevel
         {
             if ((uint)index >= (uint)NextValue(Volatile.Read(ref _NextPacked)))
                 throw new ArgumentOutOfRangeException(nameof(index), "Returned a value that was never taken.");
+            // Duplicate-return check (atomic, O(1)): a clear bit means this value has
+            // already been returned — previously this case was silently ignored (or, in
+            // the top-rollback timing, corrupted _Next), letting the damage travel
+            // through the pool and explode in a random later Take/Return. Now it
+            // throws at the offending call site.
+            if (!TryMarkReturned(index))
+                throw new InvalidOperationException($"IntBag: value {index} was returned twice (duplicate return detected).");
 
             // ---- 1. Top value: roll _Next back directly ----
             while (true)
@@ -241,7 +385,37 @@ namespace Mod.LowLevel
                     }
                 }
 
-                // ---- 3. l2 level: only at a 65536 boundary; reclaim l3[b2] if all 256 leaves are gone ----
+                // ---- 3. l2 level: only at a 65536 boundary; reclaim l3[b2            }
+
+            // ---- 2b. Bitmap leaf for the same range: defensive all-zero check, then reclaim ----
+            // Inside the trim window fresh issuing is blocked and the trim precondition
+            // guarantees no live holder in [baseIndex, baseIndex+256) — so no set bit
+            // can appear concurrently. A set bit here means a broken contract — skip
+            // everything, stay safe (same philosophy as the _Bag all-zero check).
+            {
+                var aL3 = _Allocated[(byte)(baseIndex >> 24)];
+                if (aL3 != null)
+                {
+                    var aL2 = aL3[(byte)(baseIndex >> 16)];
+                    if (aL2 != null)
+                    {
+                        var aLeaf = aL2[(byte)(baseIndex >> 8)];
+                        if (aLeaf != null)
+                        {
+                            bool bitsAllZero = true;
+                            for (int i = 0; i < 4; i++)
+                            {
+                                if (Volatile.Read(ref aLeaf[i]) != 0L) { bitsAllZero = false; break; }
+                            }
+                            if (!bitsAllZero)
+                                return;                 // contract broken → skip all levels
+                            Interlocked.Exchange(ref aL2[(byte)(baseIndex >> 8)], null);
+                        }
+                    }
+                }
+            }
+
+            // ---- 3. l2 level: only at a 65536 boundary; reclaim l3[b2] if all 256 leaves are gone ----
                 if (leafDone && baseIndex % (LeafSize * LeafSize) == 0 && l3 != null && l2 != null)
                 {
                     bool allNull = true;
