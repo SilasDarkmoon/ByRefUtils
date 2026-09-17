@@ -5,7 +5,7 @@ namespace Mod.LowLevel
 {
     public interface IRef
     {
-        IntPtr Address { get; }
+        IntPtr Address { get; set; }
     }
     public interface IUntypedRef : IRef
     {

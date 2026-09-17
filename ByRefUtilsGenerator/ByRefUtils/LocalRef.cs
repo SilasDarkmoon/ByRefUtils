@@ -154,7 +154,11 @@ namespace Mod.LowLevel
     {
         private LocalRef _LocalRef;
         public RawRef Ref2Ref => _LocalRef.Ref2Ref;
-        public IntPtr Address => _LocalRef.Address;
+        public IntPtr Address
+        {
+            get => _LocalRef.Address;
+            set => _LocalRef.Address = value;
+        }
         public LocalRef(int offset)
         {
             _LocalRef = new LocalRef(offset);
