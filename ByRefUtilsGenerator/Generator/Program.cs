@@ -300,6 +300,8 @@ namespace Generator
                     emitter.Emit(OpCodes.Ret);
                 }
 
+                EmitRefSafetyRulesAttribute(asm);
+
                 asm.Write(tar);
                 asm.Dispose();
             }
@@ -331,6 +333,88 @@ namespace Generator
                 asm.Write(root + "/ByRefUtils.TrackingRef.dll");
                 asm.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Injects [module: RefSafetyRules(version)] so that C# 11+ consumers apply the
+        /// updated ref-safety escape rules to this module's APIs (out-parameter passthrough
+        /// bridges like Ref.IgnoreOut become usable in `return ref`). The attribute type is
+        /// compiler-reserved (CS8335) and cannot be attached from source, so it has to be
+        /// emitted here at the metadata level. Idempotent: skips if already present.
+        /// </summary>
+        static void EmitRefSafetyRulesAttribute(AssemblyDefinition asm, int version = 11)
+        {
+            const string attrNamespace = "System.Runtime.CompilerServices";
+            const string attrFullName = attrNamespace + ".RefSafetyRulesAttribute";
+            var module = asm.MainModule;
+
+            // already attached to the module? nothing to do
+            foreach (var ca in module.CustomAttributes)
+            {
+                if (ca.AttributeType.FullName == attrFullName)
+                {
+                    return;
+                }
+            }
+
+            // find or create the shim attribute type (old assemblies don't contain it)
+            var attrType = module.GetType(attrFullName);
+            if (attrType == null)
+            {
+                attrType = new TypeDefinition(
+                    attrNamespace,
+                    "RefSafetyRulesAttribute",
+                    TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                    module.ImportReference(typeof(System.Attribute)));
+
+                // [AttributeUsage(Assembly | Module, AllowMultiple = false, Inherited = false)]
+                var usageCtor = module.ImportReference(
+                    typeof(AttributeUsageAttribute).GetConstructor(new[] { typeof(AttributeTargets) }));
+                var usage = new CustomAttribute(usageCtor);
+                usage.ConstructorArguments.Add(new CustomAttributeArgument(
+                    module.ImportReference(typeof(AttributeTargets)),
+                    (int)(AttributeTargets.Assembly | AttributeTargets.Module)));
+                usage.Fields.Add(new CustomAttributeNamedArgument("AllowMultiple",
+                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
+                usage.Fields.Add(new CustomAttributeNamedArgument("Inherited",
+                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
+                attrType.CustomAttributes.Add(usage);
+
+                // public readonly int Version;
+                var versionField = new FieldDefinition("Version",
+                    FieldAttributes.Public | FieldAttributes.InitOnly,
+                    module.TypeSystem.Int32);
+
+                // public RefSafetyRulesAttribute(int version) { Version = version; }
+                var ctor = new MethodDefinition(".ctor",
+                    MethodAttributes.Public | MethodAttributes.HideBySig |
+                    MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+                    module.TypeSystem.Void);
+                ctor.Parameters.Add(new ParameterDefinition("version", ParameterAttributes.None, module.TypeSystem.Int32));
+
+                // System.Attribute's own constructor is protected - reflect with NonPublic
+                var baseCtor = module.ImportReference(typeof(System.Attribute).GetConstructor(
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                    binder: null, Type.EmptyTypes, modifiers: null));
+
+                var emitter = ctor.Body.GetILProcessor();
+                emitter.Emit(OpCodes.Ldarg_0);
+                emitter.Emit(OpCodes.Call, baseCtor);
+                emitter.Emit(OpCodes.Ldarg_0);
+                emitter.Emit(OpCodes.Ldarg_1);
+                emitter.Emit(OpCodes.Stfld, versionField);
+                emitter.Emit(OpCodes.Ret);
+
+                attrType.Fields.Add(versionField);
+                attrType.Methods.Add(ctor);
+                module.Types.Add(attrType);
+            }
+
+            // [module: RefSafetyRules(version)]
+            var attrCtor = attrType.GetMethod(".ctor");
+            var attribute = new CustomAttribute(attrCtor);
+            attribute.ConstructorArguments.Add(new CustomAttributeArgument(module.TypeSystem.Int32, version));
+            module.CustomAttributes.Add(attribute);
         }
     }
 }

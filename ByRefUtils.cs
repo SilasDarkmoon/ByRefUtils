@@ -474,7 +474,7 @@ namespace Mod.LowLevel
         {
             throw new NotImplementedException();
         }
-        public static ref T IgnoreOut<T>(out T rreadonly)
+        public static ref T IgnoreOut<T>(out T rout)
         {
             throw new NotImplementedException();
         }
