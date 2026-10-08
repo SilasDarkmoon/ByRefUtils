@@ -301,6 +301,7 @@ namespace Generator
                 }
 
                 EmitRefSafetyRulesAttribute(asm);
+                EmitScopedRefOnInParameters(asm);
 
                 asm.Write(tar);
                 asm.Dispose();
@@ -415,6 +416,92 @@ namespace Generator
             var attribute = new CustomAttribute(attrCtor);
             attribute.ConstructorArguments.Add(new CustomAttributeArgument(module.TypeSystem.Int32, version));
             module.CustomAttributes.Add(attribute);
+        }
+
+        /// <summary>
+        /// Adds [ScopedRef] to every `in` parameter of ref-returning methods (currently
+        /// Ref.Unprotect&lt;T&gt;(in T rreadonly) - the readonly-laundering bridge whose IL body
+        /// above returns the in-parameter's ref directly). The scoped promise removes the
+        /// parameter from the consumer's escape-min entirely, so ANY argument shape can be
+        /// passed while returning the result by ref: `return ref Ref.Unprotect(in r)` or even
+        /// `return ref Ref.Unprotect(someLocal)` compile. Without it the in parameter
+        /// participates in the min and demands a ref-returnable argument (locals fail).
+        /// The metadata shape mirrors what C# 11 emits for `scoped in`: the parameter
+        /// carries [In, ScopedRef, IsReadOnly] - In/IsReadOnly are already present on
+        /// plain `in`, so only ScopedRef is added here. Idempotent per parameter.
+        /// NOTE: Cecil's IsByReference returns false for `T& modreq(InAttribute)`
+        /// (the exact shape C# emits for `in`), so parameters are matched by the
+        /// '&' suffix in their type name instead. `!p.IsOut` keeps out parameters
+        /// (Ref.IgnoreOut) out - they are covered by the module-level RefSafetyRules.
+        /// </summary>
+        static void EmitScopedRefOnInParameters(AssemblyDefinition asm)
+        {
+            const string ns = "System.Runtime.CompilerServices";
+            var module = asm.MainModule;
+
+            // ScopedRefAttribute shim (ns2.0 lacks it)
+            var shim = module.GetType($"{ns}.ScopedRefAttribute");
+            if (shim == null)
+            {
+                shim = new TypeDefinition(ns, "ScopedRefAttribute",
+                    TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                    module.ImportReference(typeof(System.Attribute)));
+
+                // [AttributeUsage(Parameter | Field, AllowMultiple = false, Inherited = false)]
+                var usageCtor = module.ImportReference(
+                    typeof(AttributeUsageAttribute).GetConstructor(new[] { typeof(AttributeTargets) }));
+                var usage = new CustomAttribute(usageCtor);
+                usage.ConstructorArguments.Add(new CustomAttributeArgument(
+                    module.ImportReference(typeof(AttributeTargets)),
+                    (int)(AttributeTargets.Parameter | AttributeTargets.Field)));
+                usage.Fields.Add(new CustomAttributeNamedArgument("AllowMultiple",
+                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
+                usage.Fields.Add(new CustomAttributeNamedArgument("Inherited",
+                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
+                shim.CustomAttributes.Add(usage);
+
+                var ctor = new MethodDefinition(".ctor",
+                    MethodAttributes.Public | MethodAttributes.HideBySig |
+                    MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+                    module.TypeSystem.Void);
+                var baseCtor = module.ImportReference(typeof(System.Attribute).GetConstructor(
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                    binder: null, Type.EmptyTypes, modifiers: null));
+                var il = ctor.Body.GetILProcessor();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Call, baseCtor);
+                il.Emit(OpCodes.Ret);
+                shim.Methods.Add(ctor);
+                module.Types.Add(shim);
+            }
+            var shimCtor = shim.GetMethod(".ctor");
+
+            // annotate every `in` parameter of every ref-returning method
+            // (currently just Ref.Unprotect; future in/ref-parameter additions are
+            // covered automatically since !p.IsOut matches ref as well)
+            int annotated = 0;
+            foreach (var type in module.Types)
+            {
+                if (type.Namespace != "Mod.LowLevel") continue;
+                foreach (var method in type.Methods)
+                {
+                    if (!method.ReturnType.IsByReference) continue;      // ref-returning methods
+                    foreach (var p in method.Parameters)
+                    {
+                        // Cecil quirk: IsByReference is false for `T& modreq(InAttribute)`
+                        bool isByRefLike = p.ParameterType.Name.Contains("&");
+                        if (isByRefLike && !p.IsOut)
+                        {
+                            if (!p.CustomAttributes.Any(a => a.AttributeType.FullName == $"{ns}.ScopedRefAttribute"))
+                            {
+                                p.CustomAttributes.Add(new CustomAttribute(shimCtor));
+                                annotated++;
+                            }
+                        }
+                    }
+                }
+            }
+            Console.WriteLine($"[ScopedRef] annotated {annotated} in-parameters");
         }
     }
 }
