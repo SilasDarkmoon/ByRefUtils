@@ -337,6 +337,26 @@ namespace Generator
         }
 
         /// <summary>
+        /// Builds a System.<name> type reference in the TARGET module's own reference
+        /// context (the assembly providing its object type - netstandard for ns2.0).
+        /// Never import from the injector's runtime: typeof(System.Attribute) here is
+        /// System.Private.CoreLib's, and that assembly reference makes the produced
+        /// dll unloadable on Unity/Mono ("Unable to resolve reference
+        /// 'System.Private.CoreLib'").
+        /// </summary>
+        static TypeReference GetSystemType(ModuleDefinition module, string name)
+        {
+            var scope = module.TypeSystem.Object.Scope;
+            return new TypeReference("System", name, module, scope);
+        }
+        static MethodReference GetSystemCtor(ModuleDefinition module, TypeReference type, params TypeReference[] pars)
+        {
+            var ctor = new MethodReference(".ctor", module.TypeSystem.Void, type) { HasThis = true };
+            foreach (var p in pars) ctor.Parameters.Add(new ParameterDefinition(p));
+            return ctor;
+        }
+
+        /// <summary>
         /// Injects [module: RefSafetyRules(version)] so that C# 11+ consumers apply the
         /// updated ref-safety escape rules to this module's APIs (out-parameter passthrough
         /// bridges like Ref.IgnoreOut become usable in `return ref`). The attribute type is
@@ -366,20 +386,16 @@ namespace Generator
                     attrNamespace,
                     "RefSafetyRulesAttribute",
                     TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
-                    module.ImportReference(typeof(System.Attribute)));
+                    GetSystemType(module, "Attribute"));
 
-                // [AttributeUsage(Assembly | Module, AllowMultiple = false, Inherited = false)]
-                var usageCtor = module.ImportReference(
-                    typeof(AttributeUsageAttribute).GetConstructor(new[] { typeof(AttributeTargets) }));
-                var usage = new CustomAttribute(usageCtor);
-                usage.ConstructorArguments.Add(new CustomAttributeArgument(
-                    module.ImportReference(typeof(AttributeTargets)),
-                    (int)(AttributeTargets.Assembly | AttributeTargets.Module)));
-                usage.Fields.Add(new CustomAttributeNamedArgument("AllowMultiple",
-                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
-                usage.Fields.Add(new CustomAttributeNamedArgument("Inherited",
-                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
-                attrType.CustomAttributes.Add(usage);
+                // NOTE: no [AttributeUsage] on the shim. The parameterized
+                // AttributeUsageAttribute ctor MemberRef built from raw TypeRefs
+                // fails to resolve under Mono/Unity reflection ("Method not
+                // found: AttributeUsageAttribute..ctor(AttributeTargets)"),
+                // which makes Unity's TypeCache declare the whole assembly
+                // broken. Roslyn recognizes these compiler-reserved attributes
+                // by full name alone; the default AttributeUsage (All) still
+                // permits every target we need.
 
                 // public readonly int Version;
                 var versionField = new FieldDefinition("Version",
@@ -393,10 +409,8 @@ namespace Generator
                     module.TypeSystem.Void);
                 ctor.Parameters.Add(new ParameterDefinition("version", ParameterAttributes.None, module.TypeSystem.Int32));
 
-                // System.Attribute's own constructor is protected - reflect with NonPublic
-                var baseCtor = module.ImportReference(typeof(System.Attribute).GetConstructor(
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                    binder: null, Type.EmptyTypes, modifiers: null));
+                // System.Attribute's own parameterless constructor (protected)
+                var baseCtor = GetSystemCtor(module, GetSystemType(module, "Attribute"));
 
                 var emitter = ctor.Body.GetILProcessor();
                 emitter.Emit(OpCodes.Ldarg_0);
@@ -445,28 +459,16 @@ namespace Generator
             {
                 shim = new TypeDefinition(ns, "ScopedRefAttribute",
                     TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
-                    module.ImportReference(typeof(System.Attribute)));
+                    GetSystemType(module, "Attribute"));
 
-                // [AttributeUsage(Parameter | Field, AllowMultiple = false, Inherited = false)]
-                var usageCtor = module.ImportReference(
-                    typeof(AttributeUsageAttribute).GetConstructor(new[] { typeof(AttributeTargets) }));
-                var usage = new CustomAttribute(usageCtor);
-                usage.ConstructorArguments.Add(new CustomAttributeArgument(
-                    module.ImportReference(typeof(AttributeTargets)),
-                    (int)(AttributeTargets.Parameter | AttributeTargets.Field)));
-                usage.Fields.Add(new CustomAttributeNamedArgument("AllowMultiple",
-                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
-                usage.Fields.Add(new CustomAttributeNamedArgument("Inherited",
-                    new CustomAttributeArgument(module.TypeSystem.Boolean, false)));
-                shim.CustomAttributes.Add(usage);
+                // NOTE: no [AttributeUsage] on the shim - see the note in
+                // EmitRefSafetyRulesAttribute for why (MemberRef resolution).
 
                 var ctor = new MethodDefinition(".ctor",
                     MethodAttributes.Public | MethodAttributes.HideBySig |
                     MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
                     module.TypeSystem.Void);
-                var baseCtor = module.ImportReference(typeof(System.Attribute).GetConstructor(
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                    binder: null, Type.EmptyTypes, modifiers: null));
+                var baseCtor = GetSystemCtor(module, GetSystemType(module, "Attribute"));
                 var il = ctor.Body.GetILProcessor();
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Call, baseCtor);
