@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Mod.LowLevel
@@ -136,6 +137,7 @@ namespace Mod.LowLevel
             return r;
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public ref T GetRef<T>()
         {
             throw new NotImplementedException();
@@ -157,11 +159,29 @@ namespace Mod.LowLevel
         /// </summary>
         public void SetRefObj(object obj)
         {
-            throw new NotImplementedException();
+            unsafe
+            {
+#pragma warning disable CS8500
+                fixed (IntPtr* paddr = &this._Ref)
+                {
+                    object* pobj = (object*)(void*)paddr;
+                    *pobj = obj;
+                }
+#pragma warning restore CS8500
+            }
         }
         public object GetRefObj()
         {
-            throw new NotImplementedException();
+            unsafe
+            {
+#pragma warning disable CS8500
+                fixed (IntPtr* paddr = &this._Ref)
+                {
+                    object* pobj = (object*)(void*)paddr;
+                    return *pobj;
+                }
+#pragma warning restore CS8500
+            }
         }
     }
 
@@ -475,6 +495,10 @@ namespace Mod.LowLevel
             throw new NotImplementedException();
         }
         public static ref T IgnoreOut<T>(out T rout)
+        {
+            throw new NotImplementedException();
+        }
+        public static ref T FakeRef<T>(object obj)
         {
             throw new NotImplementedException();
         }

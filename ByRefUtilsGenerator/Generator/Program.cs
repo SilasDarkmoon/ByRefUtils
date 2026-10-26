@@ -3,8 +3,6 @@ using Mono.Cecil.Cil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using Microsoft.CodeAnalysis;
-//using Microsoft.CodeAnalysis.CSharp;
 
 namespace Generator
 {
@@ -230,30 +228,31 @@ namespace Generator
                     var emitter = method.Body.GetILProcessor();
                     emitter.Emit(OpCodes.Ldarg_0);
                     emitter.Emit(OpCodes.Ldarg_1);
+                    //emitter.Emit(OpCodes.Conv_U); // Perhaps, keeping no conv.u will be better for inlining this method.
                     emitter.Emit(OpCodes.Stfld, field);
                     emitter.Emit(OpCodes.Ret);
                 }
-                {
-                    var method = reftype.GetMethod("GetRefObj");
-                    method.Body.Instructions.Clear();
+                { // Now, it's in unsafe code, instead of Emitting IL.
+                    //var method = reftype.GetMethod("GetRefObj");
+                    //method.Body.Instructions.Clear();
 
-                    var emitter = method.Body.GetILProcessor();
-                    emitter.Emit(OpCodes.Ldarg_0);
-                    emitter.Emit(OpCodes.Ldflda, field);
-                    emitter.Emit(OpCodes.Ldind_Ref);
-                    emitter.Emit(OpCodes.Castclass, objtype);
-                    emitter.Emit(OpCodes.Ret);
+                    //var emitter = method.Body.GetILProcessor();
+                    //emitter.Emit(OpCodes.Ldarg_0);
+                    //emitter.Emit(OpCodes.Ldflda, field);
+                    //emitter.Emit(OpCodes.Ldind_Ref);
+                    //emitter.Emit(OpCodes.Castclass, objtype); // if no castclass, IL2CPP will fail.
+                    //emitter.Emit(OpCodes.Ret);
                 }
-                {
-                    var method = reftype.GetMethod("SetRefObj");
-                    method.Body.Instructions.Clear();
+                { // Now, it's in unsafe code, instead of Emitting IL.
+                    //var method = reftype.GetMethod("SetRefObj");
+                    //method.Body.Instructions.Clear();
 
-                    var emitter = method.Body.GetILProcessor();
-                    emitter.Emit(OpCodes.Ldarg_0);
-                    emitter.Emit(OpCodes.Ldarg_1);
-                    emitter.Emit(OpCodes.Conv_I);
-                    emitter.Emit(OpCodes.Stfld, field);
-                    emitter.Emit(OpCodes.Ret);
+                    //var emitter = method.Body.GetILProcessor();
+                    //emitter.Emit(OpCodes.Ldarg_0);
+                    //emitter.Emit(OpCodes.Ldarg_1);
+                    //emitter.Emit(OpCodes.Conv_U);
+                    //emitter.Emit(OpCodes.Stfld, field);
+                    //emitter.Emit(OpCodes.Ret);
                 }
                 {
                     var method = type.GetMethod("RefEquals");
@@ -297,6 +296,44 @@ namespace Generator
 
                     var emitter = method.Body.GetILProcessor();
                     emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
+                    // ⑧ FakeRef (IL2CPP-translatable): same GC semantics as ⑦, but the
+                    // addresses live in TYPED object* locals instead of flowing as raw
+                    // native ints on the IL stack — il2cpp's C generator has a template
+                    // for "ldind.ref from a typed pointer local" but chokes on
+                    // "ldind.ref from a raw native int" (generates `void L_0 = *(uintptr_t)`).
+                    //   .locals init (T& V_0, object* V_1, object* V_2)
+                    //   ldloca.s V_0; conv.u; stloc.1   // pa = (object*)&rv
+                    //   ldarga.s obj; conv.u; stloc.2   // pb = (object*)&obj (arg slot)
+                    //   ldloc.1; ldloc.2; ldind.ref; stind.ref  // *pa = *pb (TYP_REF!)
+                    //   ldloc.0; ret                    // return ref rv (T& -> T& exact)
+                    // GC semantics (unchanged from ⑦): ldind.ref yields a TYP_REF node —
+                    // tracked in flight; stind.ref lands it in V_0 (T& local, byref root);
+                    // V_1/V_2 hold STACK addresses (&V_0, &arg slot) — the stack never
+                    // moves, no tracking needed. ZERO exposed boundaries in any mode.
+                    var method = type.GetMethod("FakeRef");
+                    method.Body.Instructions.Clear();
+                    method.Body.Variables.Clear();
+                    var byrefT = new ByReferenceType(method.GenericParameters[0]);
+                    var objPtr = new PointerType(objtype);
+                    method.Body.Variables.Add(new VariableDefinition(byrefT));   // V_0: T& rv
+                    method.Body.Variables.Add(new VariableDefinition(objPtr));   // V_1: object* pa
+                    method.Body.Variables.Add(new VariableDefinition(objPtr));   // V_2: object* pb
+                    method.Body.InitLocals = true;
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldloca_S, method.Body.Variables[0]);
+                    emitter.Emit(OpCodes.Conv_U);
+                    emitter.Emit(OpCodes.Stloc_1);
+                    emitter.Emit(OpCodes.Ldarga_S, method.Parameters[0]);
+                    emitter.Emit(OpCodes.Conv_U);
+                    emitter.Emit(OpCodes.Stloc_2);
+                    emitter.Emit(OpCodes.Ldloc_1);
+                    emitter.Emit(OpCodes.Ldloc_2);
+                    emitter.Emit(OpCodes.Ldind_Ref);
+                    emitter.Emit(OpCodes.Stind_Ref);
+                    emitter.Emit(OpCodes.Ldloc_0);
                     emitter.Emit(OpCodes.Ret);
                 }
 
