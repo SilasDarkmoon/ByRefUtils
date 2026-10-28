@@ -44,7 +44,16 @@ namespace Mod.LowLevel
             get => _UnionType.Type;
             set
             {
-                if (_UnionType.Type != value)
+                if (_UnionType.Type == 0)
+                {
+                    _UnionType.Type = value;
+                    if (value == RefType.Tracking)
+                    {
+                        _Tracking = RawTrackingRef.Create();
+                        _UnionType.Type = value;
+                    }
+                }
+                else if (_UnionType.Type != value)
                 {
                     ref byte addr = ref GetRef<byte>();
                     if (_UnionType.Type == RefType.Tracking)
@@ -208,24 +217,24 @@ namespace Mod.LowLevel
             _UnionType = default;
             _Local = default;
             _Tracking = default;
-            _Raw = default;
-            Raw = r;
+            _Raw = r;
+            _UnionType.Type = RefType.Raw;
         }
         public UnionRef(LocalRef r)
         {
             _UnionType = default;
-            _Local = default;
             _Tracking = default;
             _Raw = default;
-            Local = r;
+            _Local = r;
+            _UnionType.Type = RefType.Local;
         }
         public UnionRef(RawTrackingRef r)
         {
             _UnionType = default;
             _Local = default;
-            _Tracking = default;
             _Raw = default;
-            Tracking = r;
+            _Tracking = r;
+            _UnionType.Type = RefType.Tracking;
         }
         public UnionRef(RefType type)
         {
