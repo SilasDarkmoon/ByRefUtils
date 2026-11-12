@@ -498,6 +498,10 @@ namespace Mod.LowLevel
         {
             throw new NotImplementedException();
         }
+        public static ref T ConvertRef<F, T>(ref F r)
+        {
+            throw new NotImplementedException();
+        }
         public static ref T FakeRef<T>(object obj)
         {
             throw new NotImplementedException();

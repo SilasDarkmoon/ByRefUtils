@@ -299,6 +299,14 @@ namespace Generator
                     emitter.Emit(OpCodes.Ret);
                 }
                 {
+                    var method = type.GetMethod("ConvertRef");
+                    method.Body.Instructions.Clear();
+
+                    var emitter = method.Body.GetILProcessor();
+                    emitter.Emit(OpCodes.Ldarg_0);
+                    emitter.Emit(OpCodes.Ret);
+                }
+                {
                     // ⑧ FakeRef (IL2CPP-translatable): same GC semantics as ⑦, but the
                     // addresses live in TYPED object* locals instead of flowing as raw
                     // native ints on the IL stack — il2cpp's C generator has a template
