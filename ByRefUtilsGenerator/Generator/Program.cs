@@ -346,6 +346,7 @@ namespace Generator
                 }
 
                 EmitRefSafetyRulesAttribute(asm);
+                EmitUnscopedRefOnRefReturningMethods(asm);
                 EmitScopedRefOnInParameters(asm);
 
                 asm.Write(tar);
@@ -475,6 +476,74 @@ namespace Generator
             var attribute = new CustomAttribute(attrCtor);
             attribute.ConstructorArguments.Add(new CustomAttributeArgument(module.TypeSystem.Int32, version));
             module.CustomAttributes.Add(attribute);
+        }
+
+        /// <summary>
+        /// Injects [UnscopedRef] on every STATIC ref-returning method of Mod.LowLevel
+        /// (the Ref.Unprotect/IgnoreOut/ConvertRef/FakeRef/GetEmptyRef bridges),
+        /// mirroring PointerDelegate's Generator policy - whose ref-returning surface
+        /// (UnsafeEx.Invoke family, InvokeRefReturn, ConvertRef/ToRef bridges) is all
+        /// static, so "every ref-returning method" effectively means "every static
+        /// one". The woven bodies return refs escaping with the caller's slot, but
+        /// rules-11 scopes `ref` parameters (Ref.ConvertRef), so the inferred escape
+        /// would be method-only; UnscopedRef declares the calling-method escape the
+        /// real IL provides. The attribute type is a shim (ns2.0 lacks it); Roslyn
+        /// recognizes these compiler-reserved attributes by full name alone.
+        /// Idempotent: skips methods that already carry it.
+        ///
+        /// Static-only is REQUIRED, not just style: under rules-11 [UnscopedRef]
+        /// pulls all ref-like arguments INCLUDING the receiver back into the
+        /// result's escape-min. For struct instance members like LocalRef.GetRef
+        /// (non-readonly this) the receiver does not participate today, so tagging
+        /// them TIGHTENS the inference (`ref var rv = ref localR.GetRef(); return
+        /// ref rv;` degrades to method-only and fails CS8157) — the opposite of the
+        /// attribute's purpose. Field-returning instance methods already infer
+        /// correctly without any annotation.
+        /// </summary>
+        static void EmitUnscopedRefOnRefReturningMethods(AssemblyDefinition asm)
+        {
+            const string ns = "System.Diagnostics.CodeAnalysis";
+            var module = asm.MainModule;
+
+            // UnscopedRefAttribute shim (ns2.0 lacks it)
+            var shim = module.GetType($"{ns}.UnscopedRefAttribute");
+            if (shim == null)
+            {
+                shim = new TypeDefinition(ns, "UnscopedRefAttribute",
+                    TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit,
+                    GetSystemType(module, "Attribute"));
+
+                // NOTE: no [AttributeUsage] on the shim - see the note in
+                // EmitScopedRefOnInParameters for why (MemberRef resolution).
+
+                var ctor = new MethodDefinition(".ctor",
+                    MethodAttributes.Public | MethodAttributes.HideBySig |
+                    MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+                    module.TypeSystem.Void);
+                var baseCtor = GetSystemCtor(module, GetSystemType(module, "Attribute"));
+                var il = ctor.Body.GetILProcessor();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Call, baseCtor);
+                il.Emit(OpCodes.Ret);
+                shim.Methods.Add(ctor);
+                module.Types.Add(shim);
+            }
+            var shimCtor = shim.GetMethod(".ctor");
+
+            int annotated = 0;
+            foreach (var type in module.Types)
+            {
+                if (type.Namespace != "Mod.LowLevel") continue;
+                foreach (var method in type.Methods)
+                {
+                    if (!method.ReturnType.IsByReference) continue;      // ref-returning methods
+                    if (!method.IsStatic) continue;                      // see doc: receiver must stay out of escape-min
+                    if (method.CustomAttributes.Any(a => a.AttributeType.FullName == $"{ns}.UnscopedRefAttribute")) continue;
+                    method.CustomAttributes.Add(new CustomAttribute(shimCtor));
+                    annotated++;
+                }
+            }
+            Console.WriteLine($"[UnscopedRef] annotated {annotated} ref-returning methods");
         }
 
         /// <summary>
